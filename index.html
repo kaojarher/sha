@@ -1,0 +1,2646 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>軒轅劍・楓之谷・天地傳說</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <style>
+        :root {
+            --accent: #c0392b;
+            --accent2: #e74c3c;
+            --bg: #1a0e05;
+            --panel: #2c1a0e;
+            --panel2: #1f1208;
+            --text: #f5deb3;
+            --text2: #d4a96a;
+            --border: rgba(192,57,43,0.45);
+            --tag-bg: #3b1f0a;
+        }
+        .town-theme {
+            --accent: #e67e22;
+            --accent2: #f39c12;
+            --bg: #fdf6e3;
+            --panel: #fff8ea;
+            --panel2: #faebd7;
+            --text: #3b1f00;
+            --text2: #7a4f00;
+            --border: rgba(230,126,34,0.4);
+            --tag-bg: #fde8c8;
+        }
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Georgia', 'Times New Roman', '微軟正黑體', serif;
+            background: var(--bg); color: var(--text);
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+            transition: background 0.5s, color 0.5s;
+        }
+        .game-title-bar {
+            background: linear-gradient(135deg, var(--panel), var(--bg));
+            color: var(--accent); text-align: center; padding: 3px 0;
+            font-size: 11px; letter-spacing: 2px;
+            border-bottom: 1px solid var(--border);
+            text-shadow: 0 0 8px var(--accent); flex-shrink: 0;
+            transition: all 0.5s;
+        }
+        #game-map {
+            width: 100%; height: 45vh; display: block; background: #000;
+            flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        .bottom-panel {
+            flex: 1; background: var(--panel2);
+            border-top: 4px solid var(--accent);
+            display: flex; flex-direction: column;
+            padding: 8px 12px; gap: 6px; overflow-y: auto;
+            transition: all 0.5s;
+        }
+        .status-row {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 12px; font-weight: bold; flex-wrap: wrap; gap: 4px;
+        }
+        .status-row span { color: var(--text2); }
+        .status-row strong { color: var(--accent); }
+        .hp-bar-mini {
+            width: 100%; height: 6px; background: rgba(0,0,0,0.2);
+            border-radius: 10px; overflow: hidden; border: 1px solid var(--border);
+        }
+        .hp-fill-mini {
+            height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
+            border-radius: 10px; transition: width 0.3s;
+        }
+        .tabs { display: flex; gap: 4px; flex-shrink: 0; }
+        .tab-btn {
+            flex: 1; padding: 7px 4px; font-size: 10px;
+            background: rgba(128,128,128,0.1); border: 2px solid var(--accent);
+            color: var(--text); border-radius: 6px; cursor: pointer; font-family: inherit;
+            transition: all 0.2s;
+        }
+        .tab-btn.active { background: var(--accent); color: white; }
+        .tab-btn:active { transform: scale(0.95); }
+
+        /* 搖桿 */
+        #joystick-base {
+            position: fixed; bottom: 28px; left: 28px;
+            width: 80px; height: 80px;
+            background: rgba(233,30,140,0.15);
+            border: 2px solid var(--accent); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 100; backdrop-filter: blur(4px);
+        }
+        #joystick-handle {
+            width: 38px; height: 38px;
+            background: radial-gradient(circle, var(--accent), var(--accent2));
+            border-radius: 50%; border: 2px solid rgba(255,255,255,0.4);
+            box-shadow: 0 0 10px var(--accent);
+            transition: transform 0.05s;
+        }
+
+        /* 日誌 */
+        #log {
+            background: rgba(0,0,0,0.15); border-radius: 10px; padding: 6px 8px;
+            height: 60px; overflow-y: auto; font-size: 10px; font-family: monospace;
+            border-left: 3px solid var(--accent); color: var(--text2); line-height: 1.5;
+        }
+
+        /* 物品/商店格 */
+        .item-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .card {
+            border: 1px solid var(--accent); padding: 8px; border-radius: 10px;
+            text-align: center; font-size: 11px;
+            background: rgba(128,128,128,0.07); color: var(--text);
+        }
+        .card button {
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: white; border: none; padding: 4px 10px; border-radius: 20px;
+            font-weight: bold; cursor: pointer; font-size: 10px; margin-top: 4px; width: 100%;
+        }
+
+        /* NPC 按鈕 */
+        #npc-ui { margin-top: 6px; }
+        #npc-ui button {
+            background: linear-gradient(135deg, #f1c40f, #f39c12);
+            color: #1a1a2e; border: none; padding: 8px; border-radius: 8px;
+            font-weight: bold; width: 100%; cursor: pointer; font-family: inherit;
+        }
+
+        /* 資訊行 */
+        .info-row {
+            display: flex; flex-wrap: wrap; justify-content: space-between;
+            font-size: 11px; gap: 4px; color: var(--text2);
+        }
+
+        /* 屬性標籤 */
+        .elem-tag {
+            padding: 1px 7px; border-radius: 20px; color: white;
+            font-weight: bold; font-size: 10px; display: inline-block;
+        }
+        .elem-火 { background: #e74c3c; }
+        .elem-水 { background: #3498db; }
+        .elem-風 { background: #27ae60; }
+        .elem-土 { background: #a0522d; }
+        .elem-聖 { background: #f1c40f; color: #2c3e50; }
+        .elem-暗 { background: #6c3483; }
+
+        /* 魔物卡 */
+        .monster-pill {
+            background: var(--tag-bg); padding: 2px 8px; border-radius: 20px;
+            font-size: 10px; border: 1px solid var(--accent);
+            margin: 2px; display: inline-block; cursor: pointer; color: var(--accent2);
+        }
+        .inventory-area { max-height: 55px; overflow-y: auto; display: flex; flex-wrap: wrap; }
+
+        /* 連線列 */
+        .connect-row {
+            display: flex; gap: 5px; align-items: center;
+            background: rgba(233,30,140,0.08); padding: 4px 8px;
+            border-radius: 30px; flex-wrap: wrap; border: 1px solid var(--border);
+        }
+        .connect-row input {
+            flex: 2; background: rgba(0,0,0,0.15); border: 1px solid var(--accent);
+            border-radius: 20px; padding: 3px 8px; font-size: 11px; font-family: monospace;
+            outline: none; color: var(--text); min-width: 80px;
+        }
+        .connect-row input::placeholder { color: rgba(200,180,220,0.5); }
+        .connect-status {
+            font-size: 10px; font-weight: bold;
+            background: var(--tag-bg); color: var(--accent2);
+            border-radius: 20px; padding: 2px 8px;
+            border: 1px solid var(--accent); white-space: nowrap;
+        }
+
+        /* 通用按鈕 */
+        button.act-btn {
+            background: linear-gradient(135deg, #9b0060, var(--accent));
+            border: none; color: white; border-radius: 20px; padding: 5px 12px;
+            font-weight: bold; cursor: pointer; font-size: 11px; font-family: inherit;
+            box-shadow: 0 2px 8px rgba(233,30,140,0.3); transition: 0.15s;
+        }
+        button.act-btn:active { transform: scale(0.95); }
+        button.act-btn.blue { background: linear-gradient(135deg, #0d47a1, #1565c0); }
+        button.act-btn.green { background: linear-gradient(135deg, #1a6b2b, #27ae60); }
+        button.act-btn.gold { background: linear-gradient(135deg, #b8860b, #daa520); }
+        button.act-btn.gray { background: #64748b; }
+        .action-buttons { display: flex; flex-wrap: wrap; gap: 4px; }
+
+        /* 戰鬥模態 */
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,10,0.9); backdrop-filter: blur(8px);
+            z-index: 2000; display: flex; align-items: center; justify-content: center;
+            visibility: hidden; opacity: 0; transition: 0.2s;
+        }
+        .modal.active { visibility: visible; opacity: 1; }
+        .modal-content {
+            width: 90%; max-width: 420px;
+            background: var(--panel); border: 3px solid var(--accent);
+            border-radius: 24px; padding: 18px; max-height: 85vh;
+            overflow-y: auto; color: var(--text);
+            box-shadow: 0 0 30px rgba(233,30,140,0.4);
+        }
+        .modal-content h3 { color: var(--accent2); margin: 0 0 10px; }
+        .hp-bar {
+            width: 100%; height: 10px; background: rgba(0,0,0,0.3);
+            border-radius: 10px; overflow: hidden; margin: 4px 0;
+            border: 1px solid var(--border);
+        }
+        .hp-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 10px; transition: width 0.3s; }
+        .battle-log-sm {
+            background: rgba(0,0,0,0.3); color: #b3d9ff; border-radius: 12px;
+            padding: 8px; font-size: 11px; height: 110px; overflow-y: auto;
+            margin-top: 10px; border: 1px solid var(--border); font-family: monospace;
+        }
+        .beast-select {
+            width: 100%; padding: 7px; margin: 6px 0; border-radius: 16px;
+            background: rgba(0,0,0,0.2); border: 1px solid var(--accent); color: var(--text);
+        }
+        .beast-level-list { display: flex; flex-direction: column; gap: 5px; max-height: 280px; overflow-y: auto; margin-top: 8px; }
+        .beast-level-item {
+            background: rgba(0,0,0,0.2); border-radius: 20px; padding: 5px 12px;
+            display: flex; justify-content: space-between; border: 1px solid var(--border); color: var(--text2);
+        }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+
+        /* 探索率 */
+        #map-info { font-size: 9px; text-align: center; color: var(--text2); }
+
+        @media (max-width: 550px) {
+            #joystick-base { width: 68px; height: 68px; bottom: 20px; left: 20px; }
+            #joystick-handle { width: 30px; height: 30px; }
+            .tab-btn { font-size: 9px; padding: 5px 2px; }
+        }
+
+        /* QR Code 模態 */
+        #qr-modal-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,10,0.92); backdrop-filter: blur(10px);
+            z-index: 3000; display: flex; align-items: center; justify-content: center;
+            visibility: hidden; opacity: 0; transition: 0.2s;
+        }
+        #qr-modal-overlay.active { visibility: visible; opacity: 1; }
+        #qr-modal-box {
+            width: 88%; max-width: 360px;
+            background: var(--panel); border: 3px solid var(--accent);
+            border-radius: 24px; padding: 20px; text-align: center;
+            box-shadow: 0 0 40px rgba(233,30,140,0.5);
+            color: var(--text);
+        }
+        #qr-modal-box h3 { color: var(--accent2); margin: 0 0 12px; font-size: 16px; }
+        #qr-canvas-wrap {
+            background: white; border-radius: 16px; padding: 12px;
+            display: inline-block; margin: 8px 0;
+            box-shadow: 0 0 16px rgba(233,30,140,0.3);
+        }
+        #qr-hint { font-size: 11px; color: var(--text2); margin: 6px 0 14px; word-break: break-all; }
+        #scan-video-wrap {
+            position: relative; width: 100%; max-width: 300px;
+            margin: 0 auto 10px; border-radius: 12px;
+            border: 2px solid var(--accent);
+            height: 0; overflow: hidden; transition: height 0.25s;
+        }
+        #scan-video-wrap.open { height: 220px; overflow: hidden; }
+        #scan-draw-canvas { width: 100%; height: 220px; display: block; background:#000; border-radius:10px; }
+        #scan-overlay-line {
+            position: absolute; top: 0; left: 0; width: 100%; height: 3px;
+            background: var(--accent); box-shadow: 0 0 8px var(--accent2);
+            animation: scanLine 1.8s ease-in-out infinite;
+        }
+        @keyframes scanLine {
+            0% { top: 0%; } 100% { top: 100%; }
+        }
+        #scan-result-msg { font-size: 12px; color: var(--accent2); min-height: 20px; margin: 4px 0; }
+        .qr-tab-btns { display: flex; gap: 8px; margin-bottom: 12px; }
+        .qr-tab-btn {
+            flex: 1; padding: 7px; border-radius: 20px; font-size: 12px;
+            border: 2px solid var(--accent); background: transparent;
+            color: var(--text); cursor: pointer; font-family: inherit; transition: 0.2s;
+        }
+        .qr-tab-btn.active { background: var(--accent); color: white; }
+        #qr-panel, #scan-panel { display: none; }
+        #qr-panel.active, #scan-panel.active { display: block; }
+    </style>
+</head>
+<body id="game-body">
+
+<div class="game-title-bar">⚔️ 軒轅劍・楓之谷・天地傳說 🍁 Xuan Yuan × MapleStory ⚔️</div>
+<canvas id="game-map"></canvas>
+
+<div id="joystick-base"><div id="joystick-handle"></div></div>
+
+<div class="bottom-panel">
+    <!-- 狀態列 -->
+    <div class="status-row">
+        <span>🏷️ <strong id="p-name-display" style="color:var(--accent2);">俠客</strong></span>
+        <span>⭐ Lv.<strong id="p-lvl">1</strong></span>
+        <span>💰 <strong id="p-parts">500</strong> 楓幣</span>
+        <span>⚔️ <strong id="p-atk">15</strong></span>
+        <span>🛡️ <strong id="p-def">5</strong></span>
+        <span><span id="p-elem" class="elem-tag">?</span></span>
+        <span>📜 第<strong id="p-stage">1</strong>章</span>
+    </div>
+    <div class="hp-bar-mini"><div id="hp-fill-mini" class="hp-fill-mini" style="width:100%"></div></div>
+    <div style="font-size:10px; color:var(--text2); text-align:right;">❤️ <span id="p-hp">100</span>/<span id="p-maxHp">100</span></div>
+
+    <!-- 分頁 -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="app.tab('main')">🗺️ 探索</button>
+        <button class="tab-btn" onclick="app.tab('bag')">🎒 行囊</button>
+        <button class="tab-btn" onclick="app.tab('shop')">🏮 市集</button>
+        <button class="tab-btn" onclick="app.tab('beast')">🐉 靈獸</button>
+        <button class="tab-btn" onclick="app.tab('net')">🌐 連線</button>
+    </div>
+
+    <!-- 探險頁 -->
+    <div id="tab-main">
+        <div class="action-buttons" style="margin-bottom:6px;">
+            <button class="act-btn" onclick="game.upgrade('atk')">⚔️ 修煉劍法(50幣)</button>
+            <button class="act-btn" onclick="game.upgrade('def')">🛡️ 強化防護(50幣)</button>
+            <button class="act-btn" onclick="game.saveGame()">💾 存檔</button>
+            <button class="act-btn blue" onclick="document.getElementById('load-file-input').click()">📂 讀檔</button>
+            <button class="act-btn" onclick="game.showBestiary()">📜 靈獸錄</button>
+        </div>
+        <input type="file" id="load-file-input" accept=".json" style="display:none;">
+        <div id="npc-ui" style="display:none;">
+            <button onclick="app.tab('shop')">💬 與附近的仙人對話 → 前往市集</button>
+        </div>
+        <div id="log"></div>
+        <div id="map-info">🗺️ 探索率 <span id="map-percent">0</span>%　隨行靈獸: <span id="active-beasts">無</span></div>
+    </div>
+
+    <!-- 背包頁 -->
+    <div id="tab-bag" style="display:none;">
+        <div style="font-size:11px; color:var(--text2); margin-bottom:5px;">裝備：⚔️<span id="equip-w">無</span>　🛡️<span id="equip-a">無</span></div>
+        <div id="bag-list" class="item-list"></div>
+    </div>
+
+    <!-- 商店頁 -->
+    <div id="tab-shop" style="display:none;">
+        <div style="font-size:11px; color:var(--text2); margin-bottom:5px;">🏮 楓葉村市集</div>
+        <div id="shop-list" class="item-list"></div>
+    </div>
+
+    <!-- 召喚獸頁 -->
+    <div id="tab-beast" style="display:none;">
+        <div class="flex-between" style="margin-bottom:6px;">
+            <span style="font-size:11px; color:var(--text2);">靈獸印記庫</span>
+            <div class="action-buttons">
+                <button class="act-btn" onclick="app.openCombine()">🔮 煉化</button>
+                <button class="act-btn gold" onclick="app.openArena()">⚔️ 試煉場</button>
+            </div>
+        </div>
+        <div id="inventory" class="inventory-area"></div>
+    </div>
+
+    <!-- 連線頁 -->
+    <div id="tab-net" style="display:none;">
+        <!-- 名稱設定 -->
+        <div class="connect-row" style="margin-bottom:5px;">
+            <span style="font-size:11px;">🏷️ 我的道號:</span>
+            <input type="text" id="player-name-input" maxlength="12" placeholder="輸入道號"
+                style="flex:2; background:rgba(0,0,0,0.15); border:1px solid var(--accent); border-radius:20px; padding:3px 8px; font-size:11px; color:var(--text); outline:none; min-width:80px;">
+            <button class="act-btn green" style="padding:4px 12px; font-size:11px;" onclick="game.setPlayerName()">✅ 確定</button>
+        </div>
+        <div class="connect-row">
+            <span style="font-size:11px;">📡 俠客印記:</span>
+            <strong id="my-id" style="font-family:monospace; font-size:11px; color:var(--accent2);">載入中...</strong>
+            <button class="act-btn blue" onclick="game.copyId()">📋 複製</button>
+            <button class="act-btn" onclick="qrUI.open('qr')" style="background:linear-gradient(135deg,#5b21b6,#7c3aed);">📲 QR碼</button>
+        </div>
+        <div class="connect-row" style="margin-top:5px;">
+            <input type="text" id="remote-peer-id" placeholder="輸入同道印記">
+            <button class="act-btn" onclick="game.connectToPeer(document.getElementById('remote-peer-id').value.trim())">🔗 結義</button>
+            <button class="act-btn green" onclick="qrUI.open('scan')" style="padding:5px 8px;">📷 掃碼</button>
+            <span id="connect-status" class="connect-status">未連線</span>
+        </div>
+        <!-- 在線玩家列表 -->
+        <div id="online-players" style="margin-top:6px; font-size:10px; color:var(--text2); min-height:18px;">
+            🌐 在線同道：<span id="online-list">無</span>
+        </div>
+    </div>
+</div>
+
+<!-- ============ QR Code / 掃碼模態 ============ -->
+<div id="qr-modal-overlay">
+    <div id="qr-modal-box">
+        <div class="qr-tab-btns">
+            <button class="qr-tab-btn active" id="qr-tab-btn" onclick="qrUI.switchPanel('qr')">📲 顯示我的 QR</button>
+            <button class="qr-tab-btn" id="scan-tab-btn" onclick="qrUI.switchPanel('scan')">📷 掃描夥伴 QR</button>
+        </div>
+        <!-- QR 顯示面板 -->
+        <div id="qr-panel" class="active">
+            <h3>🌐 我的俠客 QR 印記</h3>
+            <div id="qr-canvas-wrap"><div id="qr-code-img"></div></div>
+            <div id="qr-hint">載入中...</div>
+            <p style="font-size:10px; color:var(--text2); margin:4px 0 12px;">讓同道掃此 QR 即可自動填入你的印記</p>
+        </div>
+        <!-- 掃碼面板 -->
+        <div id="scan-panel">
+            <h3>📷 掃描夥伴 QR 碼</h3>
+            <div id="scan-video-wrap">
+                <canvas id="scan-draw-canvas"></canvas>
+                <div id="scan-overlay-line"></div>
+            </div>
+            <video id="scan-video" autoplay playsinline muted style="display:none;"></video>
+            <div id="scan-result-msg">請對準夥伴的 QR 碼...</div>
+            <p style="font-size:10px; color:var(--text2); margin:4px 0 12px;">掃描成功後會自動填入並連線</p>
+        </div>
+        <button class="act-btn gray" style="width:100%; margin-top:4px;" onclick="qrUI.close()">✖ 關閉</button>
+    </div>
+</div>
+
+<!-- ============ 戰鬥模態 ============ -->
+<div id="battle-modal" class="modal">
+    <div class="modal-content">
+        <div class="flex-between" style="margin-bottom:10px;">
+            <span style="color:var(--accent2); font-weight:bold;">⚔️ 天地之戰 ⚔️</span>
+            <div class="action-buttons">
+                <button class="act-btn green" id="auto-battle-btn" onclick="game.toggleAuto()">🤖 自動</button>
+                <button class="act-btn gray" onclick="game.fleeBattle()">🏃 逃跑</button>
+            </div>
+        </div>
+        <div style="background:rgba(0,0,0,0.2); border-radius:16px; padding:10px; text-align:center; border:1px solid var(--border);">
+            <div id="battle-enemy-name" style="font-size:1.4rem; font-weight:bold; color:var(--accent2);">妖怪</div>
+            <span id="battle-enemy-elem" class="elem-tag">?</span>
+            <div class="hp-bar"><div id="enemy-hp-fill" class="hp-fill" style="background:linear-gradient(90deg,#e74c3c,#ff6b6b);"></div></div>
+            <div style="font-size:11px; color:var(--text2);">❤️ <span id="battle-enemy-hp">0</span>/<span id="battle-enemy-maxhp">0</span></div>
+        </div>
+        <div style="background:rgba(0,0,0,0.15); border-radius:16px; padding:10px; margin:8px 0; border:1px solid var(--border);">
+            <div style="font-size:11px;"><strong>俠客 · <span id="battle-player-elem">?</span></strong> Lv.<span id="battle-player-lvl">1</span></div>
+            <div class="hp-bar"><div id="player-hp-fill" class="hp-fill"></div></div>
+            <div style="font-size:11px; color:var(--text2);">❤️ <span id="battle-player-hp">0</span>/<span id="battle-player-maxhp">0</span> &nbsp;⚔️<span id="battle-player-atk">0</span> &nbsp;🛡️<span id="battle-player-def">0</span></div>
+        </div>
+        <div class="action-buttons" style="justify-content:center;">
+            <button class="act-btn" id="battle-attack" onclick="game.playerAttack()">⚔️ 出劍</button>
+            <button class="act-btn blue" id="battle-defend" onclick="game.playerDefend()">🛡️ 御氣</button>
+            <button class="act-btn gold" id="battle-assist" onclick="game.requestAssist()">🤝 呼喚夥伴</button>
+        </div>
+        <div class="battle-log-sm" id="battle-log">戰鬥開始！</div>
+    </div>
+</div>
+
+<!-- ============ 合成模態 ============ -->
+<div id="combine-modal" class="modal">
+    <div class="modal-content">
+        <h3>🔮 靈獸煉化</h3>
+        <p style="font-size:12px; color:var(--text2);">選擇兩隻靈獸印記施展煉化之術！</p>
+        <select id="combine-beast1" class="beast-select"></select>
+        <select id="combine-beast2" class="beast-select"></select>
+        <div class="flex-between" style="margin-top:10px;">
+            <button class="act-btn" onclick="game.combineBeasts()">🔮 合成召喚</button>
+            <button class="act-btn gray" onclick="document.getElementById('combine-modal').classList.remove('active')">取消</button>
+        </div>
+        <div id="combine-result" style="margin-top:10px; font-size:12px; color:var(--accent2);"></div>
+    </div>
+</div>
+
+<!-- ============ 競技場模態 ============ -->
+<div id="arena-modal" class="modal">
+    <div class="modal-content">
+        <h3>⚔️ 試煉場</h3>
+        <p style="font-size:12px; color:var(--text2);">選擇靈獸挑戰試煉場！</p>
+        <select id="arena-beast" class="beast-select"></select>
+        <div class="flex-between" style="margin-top:10px;">
+            <button class="act-btn gold" onclick="game.startArenaBattle()">🐾 開始對戰</button>
+            <button class="act-btn gray" onclick="document.getElementById('arena-modal').classList.remove('active')">取消</button>
+        </div>
+        <div id="arena-log" class="battle-log-sm" style="height:140px;">等待挑戰...</div>
+    </div>
+</div>
+
+<!-- ============ 魔物圖鑑 ============ -->
+<div id="bestiary-modal" class="modal">
+    <div class="modal-content">
+        <h3>📜 靈獸錄 · 修煉等階</h3>
+        <div id="bestiary-list" class="beast-level-list">尚無收錄資料</div>
+        <button class="act-btn gray" style="margin-top:14px; width:100%;" onclick="document.getElementById('bestiary-modal').classList.remove('active')">關閉</button>
+    </div>
+</div>
+
+<!-- ============ 夥伴互動模態（聊天 + 交易入口）============ -->
+<div id="interact-modal" class="modal">
+    <div class="modal-content" style="padding:14px;">
+        <div class="flex-between" style="margin-bottom:10px;">
+            <h3 style="margin:0; font-size:15px; color:var(--accent2);">🧑‍🤝‍🧑 <span id="interact-name">夥伴</span></h3>
+            <button class="act-btn gray" style="padding:4px 10px;" onclick="document.getElementById('interact-modal').classList.remove('active')">✖</button>
+        </div>
+        <!-- 分頁 -->
+        <div style="display:flex; gap:5px; margin-bottom:10px;">
+            <button class="act-btn" id="itab-chat-btn" onclick="interactUI.switchTab('chat')" style="flex:1; font-size:11px;">💬 交談</button>
+            <button class="act-btn blue" id="itab-trade-btn" onclick="interactUI.switchTab('trade')" style="flex:1; font-size:11px;">🛍️ 交易</button>
+        </div>
+
+        <!-- 聊天區 -->
+        <div id="itab-chat">
+            <div id="chat-log" style="background:rgba(0,0,0,0.15); border-radius:10px; padding:8px; height:130px; overflow-y:auto; font-size:11px; font-family:monospace; border:1px solid var(--border); color:var(--text2); line-height:1.6;"></div>
+            <div style="display:flex; gap:5px; margin-top:6px;">
+                <input id="chat-input" type="text" placeholder="輸入訊息..." maxlength="80"
+                    style="flex:1; background:rgba(0,0,0,0.15); border:1px solid var(--accent); border-radius:20px; padding:5px 10px; font-size:12px; color:var(--text); outline:none;"
+                    onkeydown="if(event.key==='Enter') interactUI.sendChat()">
+                <button class="act-btn" onclick="interactUI.sendChat()" style="padding:5px 12px; font-size:11px;">發送</button>
+            </div>
+            <!-- 快捷語 -->
+            <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:6px;">
+                <button class="act-btn gray" style="font-size:10px; padding:3px 8px;" onclick="interactUI.quickChat('你好！👋')">你好👋</button>
+                <button class="act-btn gray" style="font-size:10px; padding:3px 8px;" onclick="interactUI.quickChat('一同闖蕩吧！⚔️')">組隊⚔️</button>
+                <button class="act-btn gray" style="font-size:10px; padding:3px 8px;" onclick="interactUI.quickChat('需要援手嗎？🤝')">幫忙🤝</button>
+                <button class="act-btn gray" style="font-size:10px; padding:3px 8px;" onclick="interactUI.quickChat('交易物品？💰')">交易💰</button>
+            </div>
+        </div>
+
+        <!-- 交易區 -->
+        <div id="itab-trade" style="display:none;">
+            <!-- 對方的上架物 -->
+            <div style="font-size:11px; color:var(--accent2); font-weight:bold; margin-bottom:5px;">🏪 <span id="trade-partner-name">夥伴</span> 的攤位</div>
+            <div id="partner-stall" style="max-height:110px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; margin-bottom:8px;">
+                <div style="font-size:10px; color:var(--text2);">（尚無上架物品）</div>
+            </div>
+            <hr style="border-color:var(--border); margin:6px 0;">
+            <!-- 我的上架管理 -->
+            <div class="flex-between" style="margin-bottom:5px;">
+                <div style="font-size:11px; color:var(--accent2); font-weight:bold;">🎒 我的攤位</div>
+                <button class="act-btn green" style="font-size:10px; padding:3px 10px;" onclick="interactUI.openListingEditor()">➕ 上架物品</button>
+            </div>
+            <div id="my-stall" style="max-height:90px; overflow-y:auto; display:flex; flex-direction:column; gap:4px;">
+                <div id="my-stall-empty" style="font-size:10px; color:var(--text2);">（尚未上架物品）</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ 上架物品編輯器 ============ -->
+<div id="listing-modal" class="modal" style="z-index:2100;">
+    <div class="modal-content" style="padding:14px;">
+        <h3 style="margin:0 0 10px; color:var(--accent2);">➕ 上架物品</h3>
+        <div style="font-size:11px; color:var(--text2); margin-bottom:6px;">選擇要販售的物品：</div>
+        <select id="listing-item-select" class="beast-select" onchange="interactUI.onListingItemChange()">
+            <option value="">── 選擇物品 ──</option>
+        </select>
+        <div style="display:flex; gap:8px; margin-top:8px; align-items:center;">
+            <span style="font-size:11px; color:var(--text2); white-space:nowrap;">數量：</span>
+            <input id="listing-qty" type="number" min="1" value="1"
+                style="width:60px; background:rgba(0,0,0,0.2); border:1px solid var(--accent); border-radius:10px; padding:4px 8px; color:var(--text); font-size:12px; outline:none;">
+            <span style="font-size:11px; color:var(--text2); white-space:nowrap;">定價(z)：</span>
+            <input id="listing-price" type="number" min="1" value="100"
+                style="width:70px; background:rgba(0,0,0,0.2); border:1px solid var(--accent); border-radius:10px; padding:4px 8px; color:var(--text); font-size:12px; outline:none;">
+        </div>
+        <div id="listing-stock-info" style="font-size:10px; color:var(--text2); margin-top:4px;"></div>
+        <div style="display:flex; gap:6px; margin-top:12px;">
+            <button class="act-btn green" style="flex:1;" onclick="interactUI.confirmListing()">✅ 確認上架</button>
+            <button class="act-btn gray" style="flex:1;" onclick="document.getElementById('listing-modal').classList.remove('active')">取消</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ======================== 常數 ========================
+const ELEMENTS = ["金","木","水","火","土"];
+const SPAWN_POOL = [
+    "史萊姆","橘蘑菇","豬豬","章魚怪","幽靈騎士",
+    "木妖","石像鬼","雪人","藍蝸牛","毒蘑菇",
+    "骷髏弓手","牛頭怪","飛天章魚","蝙蝠怪","暗黑眼球"
+];
+const ADVANCED_BEASTS = {
+    "史萊姆":"史萊姆王","橘蘑菇":"蘑菇王","豬豬":"豬豬騎士",
+    "章魚怪":"深海章魚王","幽靈騎士":"暗黑騎士",
+    "木妖":"千年木妖","石像鬼":"石像鬼將","雪人":"冰雪魔神",
+    "藍蝸牛":"蝸牛精","毒蘑菇":"劇毒蘑菇王",
+    "骷髏弓手":"骷髏射神","牛頭怪":"牛魔王","飛天章魚":"風暴章魚",
+    "蝙蝠怪":"吸血蝠魔","暗黑眼球":"邪神之眼"
+};
+const MYTHIC_BEASTS = ["黑龍","朱雀神鳥","玄武大龜","白虎","蚩尤","盤古巨靈"];
+
+// 商店物品
+const SHOP_ITEMS = {
+    "🗡️ 軒轅劍": { type:"weapon", atk:25, price:200, desc:"ATK+25 軒轅神劍" },
+    "⚔️ 楓葉刀": { type:"weapon", atk:40, price:400, desc:"ATK+40 楓葉精鋼鑄" },
+    "🛡️ 玄鐵盾": { type:"armor", def:20, price:250, desc:"DEF+20 玄鐵鑄造" },
+    "🪖 八卦盔": { type:"armor", def:35, price:450, desc:"DEF+35 八卦護甲" },
+    "🧪 回春丹": { type:"use", price:20, desc:"HP+50", effect(p){ p.hp = Math.min(p.maxHp, p.hp+50); } },
+    "🧪 大還丹": { type:"use", price:40, desc:"HP+120", effect(p){ p.hp = Math.min(p.maxHp, p.hp+120); } }
+};
+
+const GRID_SIZE = 52;
+const WORLD_W = 3000, WORLD_H = 3000;
+const TOWN_X = 1000, TOWN_Y = 1000, TOWN_SIZE = 800;
+
+// 地圖名稱池
+const MAP_NAMES = ["楓葉村","樹林地帶","沼澤秘境","冰原雪域","軒轅古城","天界遺跡","魔王要塞"];
+
+function getElementFactor(a, d) {
+    if(a==="金"&&d==="木") return 1.25;
+    if(a==="木"&&d==="土") return 1.25;
+    if(a==="土"&&d==="水") return 1.25;
+    if(a==="水"&&d==="火") return 1.25;
+    if(a==="火"&&d==="金") return 1.25;
+    if(a==="木"&&d==="金") return 0.8;
+    if(a==="土"&&d==="木") return 0.8;
+    if(a==="水"&&d==="土") return 0.8;
+    if(a==="火"&&d==="水") return 0.8;
+    if(a==="金"&&d==="火") return 0.8;
+    return 1.0;
+}
+
+function getMonsterEmoji(type) {
+    const m = {
+        "史萊姆":"🟢","橘蘑菇":"🍄","豬豬":"🐷","章魚怪":"🐙","幽靈騎士":"👻",
+        "木妖":"🌲","石像鬼":"🗿","雪人":"⛄","藍蝸牛":"🐌","毒蘑菇":"☠️",
+        "骷髏弓手":"💀","牛頭怪":"🐃","飛天章魚":"🪼","蝙蝠怪":"🦇","暗黑眼球":"👁️"
+    };
+    return m[type] || "👾";
+}
+
+function getElemColor(e) {
+    const c = {"金":"#d4af37","木":"#27ae60","水":"#2980b9","火":"#c0392b","土":"#8b5e3c"};
+    return c[e] || "#c0392b";
+}
+
+// NPC 定義（村內固定位置）
+const NPCS = [
+    {name:"鑄劍師伯樂", icon:"🔨", x:1320, y:1350},
+    {name:"藥師華陀", icon:"🧪", x:1550, y:1530},
+    {name:"術士張角", icon:"🔮", x:1400, y:1600}
+];
+
+// ======================== 主引擎 ========================
+class RagnarokEngine {
+    constructor() {
+        this.canvas = document.getElementById('game-map');
+        this.ctx = this.canvas.getContext('2d');
+        this.player = {
+            x: TOWN_X + TOWN_SIZE/2, y: TOWN_Y + TOWN_SIZE/2,
+            lvl:1, exp:0, hp:100, maxHp:100,
+            atk:15, def:5, parts:500,
+            elem: ELEMENTS[Math.floor(Math.random()*ELEMENTS.length)],
+            explored: {}, inventory: {}, equip: {weapon:null, armor:null},
+            bonusAtk:0, stage:1
+        };
+        this.beastLevels = {};
+        this.enemies = [];
+        this.joystick = { x:0, y:0, active:false };
+        this.inBattle = false;
+        this.currentEnemy = null;
+        this.defending = false;
+        this.autoBattle = false;
+        this.animTime = 0;
+        this.peer = null; this.myFullId = null;
+        this.myName = '';   // 玩家自訂名稱
+        // Mesh 多人
+        this.connections = new Map();   // peerId → conn
+        this.partners = new Map();      // peerId → {x,y,elem,lvl,name,stall}
+        this.myStall = [];              // 我自己的攤位 [{itemName, qty, price}]
+        this.assistCooldown = false;
+        this._posBroadcastTimer = null;
+        this._advancedFlag = false;
+        this.init();
+    }
+
+    init() {
+        window.addEventListener('resize', () => this.resizeCanvas());
+        this.resizeCanvas();
+        this.initJoystick();
+        // 預生成妖怪（全在村外）
+        for(let i=0; i<18; i++) this.spawnEnemy();
+        // 城內初始明亮
+        this.clearFogInTown();
+        this.clearFogAroundPlayer();
+        this.updateUI();
+        this.initPeerConnection();
+        // 存檔讀檔
+        document.getElementById('load-file-input').onchange = (e) => {
+            const f = e.target.files[0]; if(!f) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => { this.importSaveData(ev.target.result); e.target.value=''; };
+            reader.readAsText(f);
+        };
+        // 動畫 + 主迴圈
+        this.animate();
+        this.gameLoop();
+        // 每2.8秒補充妖怪
+        setInterval(() => { if(this.enemies.length < 14 && !this.inBattle) this.spawnEnemy(); }, 2800);
+        this.log(`🍁 軒轅楓谷降臨！初始位置：楓葉村（安全聚落）`);
+        // canvas 點擊：偵測夥伴（區分 tap vs 搖桿拖動）
+        this._touchStartPos = null;
+        this.canvas.addEventListener('mousemove', (e) => {
+            if(this.partners.size === 0) { this.canvas.style.cursor=''; return; }
+            const rect = this.canvas.getBoundingClientRect();
+            const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+            const cW = this.canvas.width, cH = this.canvas.height;
+            let camX = Math.max(0, Math.min(WORLD_W-cW, this.player.x - cW/2));
+            let camY = Math.max(0, Math.min(WORLD_H-cH, this.player.y - cH/2));
+            let hover = false;
+            for(let [,pp] of this.partners.entries()) {
+                if(!pp) continue;
+                if(Math.hypot(cx-(pp.x-camX), cy-(pp.y-camY)) < 44) { hover=true; break; }
+            }
+            this.canvas.style.cursor = hover ? 'pointer' : '';
+        });
+        this.canvas.addEventListener('click', (e) => this._onCanvasClick(e));
+        this.canvas.addEventListener('touchstart', (e) => {
+            if(e.touches.length === 1) {
+                this._touchStartPos = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+            }
+        }, {passive:true});
+        this.canvas.addEventListener('touchend', (e) => {
+            if(e.changedTouches.length > 0 && this._touchStartPos) {
+                const t = e.changedTouches[0];
+                const dx = t.clientX - this._touchStartPos.x;
+                const dy = t.clientY - this._touchStartPos.y;
+                // 只有移動距離 < 10px 才算 tap（不是拖動）
+                if(Math.hypot(dx, dy) < 10) {
+                    this._onCanvasClick({clientX: t.clientX, clientY: t.clientY});
+                }
+            }
+            this._touchStartPos = null;
+        }, {passive:true});
+    }
+
+    resizeCanvas() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight * 0.45;
+    }
+
+    /** 點擊 canvas 時偵測是否點到夥伴 */
+    _onCanvasClick(e) {
+        if(this.inBattle) return;
+        if(this.partners.size === 0) return;
+        const rect = this.canvas.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+        // 計算相機偏移
+        const cW = this.canvas.width, cH = this.canvas.height;
+        let camX = this.player.x - cW/2, camY = this.player.y - cH/2;
+        camX = Math.max(0, Math.min(WORLD_W-cW, camX));
+        camY = Math.max(0, Math.min(WORLD_H-cH, camY));
+        // 找最近的夥伴（點擊半徑 44px，比夥伴圖示大）
+        let hitPid = null, hitDist = 44;
+        for(let [pid, pp] of this.partners.entries()) {
+            if(!pp) continue;
+            const sx = pp.x - camX, sy = pp.y - camY;
+            const d = Math.hypot(cx - sx, cy - sy);
+            if(d < hitDist) { hitDist = d; hitPid = pid; }
+        }
+        if(hitPid) {
+            interactUI.open(hitPid);
+        }
+    }
+
+    initJoystick() {
+        const base = document.getElementById('joystick-base');
+        const handle = document.getElementById('joystick-handle');
+        const getCoord = (e) => { const t = e.touches ? e.touches[0] : e; return {clientX:t.clientX,clientY:t.clientY}; };
+        const handleMove = (e) => {
+            if(!this.joystick.active) return;
+            e.preventDefault();
+            const coord = getCoord(e);
+            const rect = base.getBoundingClientRect();
+            const cx = rect.left+rect.width/2, cy = rect.top+rect.height/2;
+            let dx = coord.clientX-cx, dy = coord.clientY-cy;
+            const maxDist = rect.width/2 - 4;
+            let dist = Math.min(maxDist, Math.hypot(dx,dy));
+            if(dist < 0.01){ this.joystick.x=0; this.joystick.y=0; handle.style.transform='translate(0,0)'; return; }
+            const ang = Math.atan2(dy,dx);
+            const intensity = dist/maxDist;
+            this.joystick.x = Math.cos(ang)*intensity;
+            this.joystick.y = Math.sin(ang)*intensity;
+            handle.style.transform = `translate(${Math.cos(ang)*dist}px,${Math.sin(ang)*dist}px)`;
+        };
+        const endDrag = () => { this.joystick.active=false; this.joystick.x=0; this.joystick.y=0; handle.style.transform='translate(0,0)'; };
+        base.addEventListener('mousedown', (e)=>{ e.preventDefault(); this.joystick.active=true; handleMove(e); });
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', endDrag);
+        base.addEventListener('touchstart', (e)=>{ e.preventDefault(); this.joystick.active=true; handleMove(e); });
+        window.addEventListener('touchmove', handleMove, {passive:false});
+        window.addEventListener('touchend', endDrag);
+    }
+
+    inTown() {
+        const p = this.player;
+        return p.x > TOWN_X && p.x < TOWN_X+TOWN_SIZE && p.y > TOWN_Y && p.y < TOWN_Y+TOWN_SIZE;
+    }
+
+    clearFogInTown() {
+        // 城內所有格子永遠明亮
+        const x0 = Math.floor(TOWN_X/GRID_SIZE), x1 = Math.ceil((TOWN_X+TOWN_SIZE)/GRID_SIZE);
+        const y0 = Math.floor(TOWN_Y/GRID_SIZE), y1 = Math.ceil((TOWN_Y+TOWN_SIZE)/GRID_SIZE);
+        for(let gx=x0; gx<=x1; gx++) for(let gy=y0; gy<=y1; gy++) this.player.explored[`${gx},${gy}`] = true;
+    }
+
+    clearFogAroundPlayer() {
+        const gx = Math.floor(this.player.x/GRID_SIZE);
+        const gy = Math.floor(this.player.y/GRID_SIZE);
+        for(let ix=-2; ix<=2; ix++) for(let iy=-2; iy<=2; iy++)
+            this.player.explored[`${gx+ix},${gy+iy}`] = true;
+    }
+
+    spawnEnemy() {
+        // 只在城外生成
+        let x, y, tries=0;
+        do {
+            x = Math.random()*WORLD_W; y = Math.random()*WORLD_H; tries++;
+        } while(tries<30 && x>TOWN_X-80 && x<TOWN_X+TOWN_SIZE+80 && y>TOWN_Y-80 && y<TOWN_Y+TOWN_SIZE+80);
+        if(Math.hypot(x-this.player.x, y-this.player.y) < 120) { x=(x+200)%WORLD_W; y=(y+200)%WORLD_H; }
+        const type = SPAWN_POOL[Math.floor(Math.random()*SPAWN_POOL.length)];
+        const elem = ELEMENTS[Math.floor(Math.random()*ELEMENTS.length)];
+        const sb = 1+(this.player.stage-1)*0.15;
+        this.enemies.push({
+            x, y, type, elem,
+            hp: Math.floor((45+this.player.lvl*8)*sb),
+            maxHp: Math.floor((45+this.player.lvl*8)*sb),
+            atk: Math.floor((12+this.player.lvl*2)*sb),
+            def: Math.floor((4+this.player.lvl*1.2)*sb),
+            offsetY:0, id: Date.now()+Math.random()
+        });
+    }
+
+    gameLoop() {
+        if(!this.inBattle) this.updateMovement();
+        this.drawScene();
+        requestAnimationFrame(() => this.gameLoop());
+    }
+
+    animate() {
+        this.animTime += 0.05;
+        const off = Math.sin(this.animTime)*3;
+        this.enemies.forEach(e=>e.offsetY=off);
+        requestAnimationFrame(() => this.animate());
+    }
+
+    updateMovement() {
+        if(Math.abs(this.joystick.x)<0.05 && Math.abs(this.joystick.y)<0.05) return;
+        this.player.x += this.joystick.x*6;
+        this.player.y += this.joystick.y*6;
+        this.player.x = Math.max(0, Math.min(WORLD_W, this.player.x));
+        this.player.y = Math.max(0, Math.min(WORLD_H, this.player.y));
+
+        // 城外才解鎖迷霧
+        if(!this.inTown()) this.clearFogAroundPlayer();
+
+        // NPC 偵測
+        let nearNPC = false;
+        NPCS.forEach(n => { if(Math.hypot(this.player.x-n.x, this.player.y-n.y)<65) nearNPC=true; });
+        document.getElementById('npc-ui').style.display = nearNPC ? 'block' : 'none';
+
+        // 妖怪碰撞
+        for(let i=0; i<this.enemies.length; i++) {
+            const e = this.enemies[i];
+            if(Math.hypot(this.player.x-e.x, this.player.y-e.y)<40) {
+                const gx=Math.floor(e.x/GRID_SIZE), gy=Math.floor(e.y/GRID_SIZE);
+                if(this.player.explored[`${gx},${gy}`]) { this.startBattleWith(e,i); break; }
+            }
+        }
+
+        // 主題切換
+        document.getElementById('game-body').className = this.inTown() ? 'town-theme' : '';
+        this.updateUI();
+    }
+
+    // ======================== 畫面渲染 ========================
+    drawScene() {
+        const { ctx, canvas, player } = this;
+        const cW=canvas.width, cH=canvas.height;
+        let camX=player.x-cW/2, camY=player.y-cH/2;
+        camX=Math.max(0,Math.min(WORLD_W-cW,camX));
+        camY=Math.max(0,Math.min(WORLD_H-cH,camY));
+
+        // 楓林草原背景
+        const grad = ctx.createLinearGradient(0,0,cW,cH);
+        grad.addColorStop(0,'#5a7a3a'); grad.addColorStop(1,'#4a6a2a');
+        ctx.fillStyle = grad; ctx.fillRect(0,0,cW,cH);
+
+        // 楓林格線
+        ctx.strokeStyle='rgba(60,100,40,0.35)'; ctx.lineWidth=1;
+        let sx=Math.floor(camX/GRID_SIZE)*GRID_SIZE, sy=Math.floor(camY/GRID_SIZE)*GRID_SIZE;
+        for(let x=sx; x<camX+cW; x+=GRID_SIZE){ ctx.beginPath(); ctx.moveTo(x-camX,0); ctx.lineTo(x-camX,cH); ctx.stroke(); }
+        for(let y=sy; y<camY+cH; y+=GRID_SIZE){ ctx.beginPath(); ctx.moveTo(0,y-camY); ctx.lineTo(cW,y-camY); ctx.stroke(); }
+
+        // 城市地板
+        const txRel=TOWN_X-camX, tyRel=TOWN_Y-camY;
+        ctx.fillStyle='#e8d5a3';  // 楓葉村地板（米黃暖色）
+        ctx.fillRect(txRel, tyRel, TOWN_SIZE, TOWN_SIZE);
+        // 城市內格線
+        ctx.strokeStyle='rgba(150,180,220,0.4)'; ctx.lineWidth=1;
+        for(let x=TOWN_X; x<TOWN_X+TOWN_SIZE; x+=GRID_SIZE){ ctx.beginPath(); ctx.moveTo(x-camX,tyRel); ctx.lineTo(x-camX,tyRel+TOWN_SIZE); ctx.stroke(); }
+        for(let y=TOWN_Y; y<TOWN_Y+TOWN_SIZE; y+=GRID_SIZE){ ctx.beginPath(); ctx.moveTo(txRel,y-camY); ctx.lineTo(txRel+TOWN_SIZE,y-camY); ctx.stroke(); }
+        // 城牆
+        ctx.strokeStyle='#c0392b'; ctx.lineWidth=8;  // 紅色城牆
+        ctx.strokeRect(txRel, tyRel, TOWN_SIZE, TOWN_SIZE);
+        // 城市標題
+        ctx.fillStyle='rgba(150,30,20,0.85)'; ctx.font='bold 13px Georgia';
+        ctx.textAlign='center';
+        ctx.fillText('🍁 楓葉村', txRel+TOWN_SIZE/2, tyRel+20);
+
+        // NPC
+        NPCS.forEach(n => {
+            const nx=n.x-camX, ny=n.y-camY;
+            ctx.font='22px Arial'; ctx.textAlign='center';
+            ctx.fillText(n.icon, nx, ny);
+            ctx.font='9px Arial'; ctx.fillStyle='#1e40af';
+            ctx.fillText(n.name, nx, ny+14);
+        });
+
+        // 戰爭迷霧（城外）
+        for(let x=sx; x<camX+cW; x+=GRID_SIZE) for(let y=sy; y<camY+cH; y+=GRID_SIZE) {
+            const isTown = x>=TOWN_X-GRID_SIZE && x<TOWN_X+TOWN_SIZE && y>=TOWN_Y-GRID_SIZE && y<TOWN_Y+TOWN_SIZE;
+            if(!isTown) {
+                const gx=Math.floor(x/GRID_SIZE), gy=Math.floor(y/GRID_SIZE);
+                if(!player.explored[`${gx},${gy}`]) {
+                    ctx.fillStyle='rgba(15,20,40,0.88)';
+                    ctx.fillRect(x-camX, y-camY, GRID_SIZE+1, GRID_SIZE+1);
+                }
+            }
+        }
+
+        // 妖怪
+        this.enemies.forEach(m => {
+            const gx=Math.floor(m.x/GRID_SIZE), gy=Math.floor(m.y/GRID_SIZE);
+            if(!player.explored[`${gx},${gy}`]) return;
+            const sx=m.x-camX, sy2=m.y-camY+m.offsetY;
+            if(sx<-30||sx>cW+30||sy2<-30||sy2>cH+30) return;
+            // 陰影
+            ctx.fillStyle='rgba(0,0,0,0.2)';
+            ctx.beginPath(); ctx.ellipse(sx,sy2+16,12,5,0,0,Math.PI*2); ctx.fill();
+            // 本體
+            ctx.fillStyle=getElemColor(m.elem);
+            ctx.beginPath(); ctx.arc(sx,sy2,14,0,Math.PI*2); ctx.fill();
+            // emoji
+            ctx.font='16px Arial'; ctx.textAlign='center';
+            ctx.fillText(getMonsterEmoji(m.type), sx, sy2+6);
+            // 名稱標籤
+            ctx.fillStyle='rgba(0,0,20,0.7)';
+            ctx.fillRect(sx-20,sy2-28,40,13);
+            ctx.fillStyle='#fff'; ctx.font='bold 8px Arial';
+            ctx.fillText(m.type.length>5?m.type.slice(0,5):m.type, sx, sy2-18);
+            ctx.textAlign='left';
+        });
+
+        // 玩家
+        const psx=player.x-camX, psy=player.y-camY;
+        ctx.fillStyle='rgba(0,0,0,0.3)';
+        ctx.beginPath(); ctx.ellipse(psx,psy+20,14,6,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='rgba(233,30,140,0.25)';
+        ctx.beginPath(); ctx.arc(psx,psy,24,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle=getElemColor(player.elem);
+        ctx.beginPath(); ctx.arc(psx,psy,18,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle='#ffb3d9'; ctx.lineWidth=2; ctx.stroke();
+        ctx.font='20px Arial'; ctx.textAlign='center';
+        ctx.fillText('👤', psx, psy+8);
+        ctx.textAlign='left';
+
+        // ---- 所有夥伴角色（Mesh 多人）----
+        for(let [pid, pp] of this.partners.entries()) {
+            if(!pp) continue;
+            const bsx = pp.x - camX, bsy = pp.y - camY;
+            if(bsx < -40 || bsx > cW+40 || bsy < -40 || bsy > cH+40) continue;
+            // 可點擊提示：脈衝外圈
+            const pulse = 0.5 + 0.5 * Math.sin(this.animTime * 2);
+            ctx.strokeStyle = `rgba(0,234,255,${0.4 + 0.4 * pulse})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(bsx, bsy, 26 + pulse * 4, 0, Math.PI*2); ctx.stroke();
+            // 陰影
+            ctx.fillStyle='rgba(0,0,0,0.3)';
+            ctx.beginPath(); ctx.ellipse(bsx, bsy+20, 14, 6, 0, 0, Math.PI*2); ctx.fill();
+            // 外光圈（青色）
+            ctx.fillStyle='rgba(0,200,255,0.22)';
+            ctx.beginPath(); ctx.arc(bsx, bsy, 24, 0, Math.PI*2); ctx.fill();
+            // 主體（夥伴屬性色）
+            ctx.fillStyle = getElemColor(pp.elem||'聖');
+            ctx.beginPath(); ctx.arc(bsx, bsy, 18, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle='#00eaff'; ctx.lineWidth=2.5; ctx.stroke();
+            // 圖標
+            ctx.font='20px Arial'; ctx.textAlign='center';
+            ctx.fillText('🧑‍🤝‍🧑', bsx, bsy+8);
+            // 名牌背景
+            ctx.fillStyle='rgba(0,20,40,0.78)';
+            ctx.fillRect(bsx-28, bsy-36, 56, 14);
+            ctx.fillStyle='#00eaff'; ctx.font='bold 8px Arial';
+            ctx.fillText(`${pp.name||pid.slice(0,6)} Lv.${pp.lvl||'?'}`, bsx, bsy-25);
+            // 點擊提示小標
+            ctx.fillStyle='rgba(0,234,255,0.85)';
+            ctx.fillRect(bsx-12, bsy+22, 24, 11);
+            ctx.fillStyle='#001a20'; ctx.font='bold 7px Arial';
+            ctx.fillText('點擊互動', bsx, bsy+30);
+            ctx.textAlign='left';
+        }
+    }   // ← end drawScene
+
+    // ======================== 戰鬥系統 ========================
+    startBattleWith(enemy, index) {
+        if(this.inBattle) return;
+        this.inBattle=true;
+        this.currentEnemy={...enemy, arrayIndex:index};
+        this.enemies.splice(index,1);
+        document.getElementById('battle-modal').classList.add('active');
+        this.updateBattleUI();
+        this.addBattleLog(`⚠️ 遭遇妖怪「${enemy.type}」（${enemy.elem}屬）！準備應戰！`);
+        this.assistCooldown=false;
+        if(this.autoBattle) setTimeout(()=>this.autoBattleAction(),100);
+    }
+
+    updateBattleUI() {
+        if(!this.currentEnemy) return;
+        const e=this.currentEnemy;
+        document.getElementById('battle-enemy-name').innerText=e.type;
+        const es=document.getElementById('battle-enemy-elem');
+        es.innerText=e.elem; es.className=`elem-tag elem-${e.elem}`;
+        document.getElementById('battle-enemy-hp').innerText=Math.max(0,e.hp);
+        document.getElementById('battle-enemy-maxhp').innerText=e.maxHp;
+        document.getElementById('enemy-hp-fill').style.width=`${(e.hp/e.maxHp)*100}%`;
+        document.getElementById('battle-player-elem').innerHTML=`<span class="elem-tag elem-${this.player.elem}">${this.player.elem}</span>`;
+        document.getElementById('battle-player-lvl').innerText=this.player.lvl;
+        document.getElementById('battle-player-hp').innerText=Math.floor(this.player.hp);
+        document.getElementById('battle-player-maxhp').innerText=this.player.maxHp;
+        document.getElementById('battle-player-atk').innerText=this.getAtk();
+        document.getElementById('battle-player-def').innerText=this.getDef();
+        document.getElementById('player-hp-fill').style.width=`${(this.player.hp/this.player.maxHp)*100}%`;
+    }
+
+    getAtk() {
+        let a=this.player.atk;
+        if(this.player.equip.weapon && SHOP_ITEMS[this.player.equip.weapon]) a+=SHOP_ITEMS[this.player.equip.weapon].atk||0;
+        return a;
+    }
+    getDef() {
+        let d=this.player.def;
+        if(this.player.equip.armor && SHOP_ITEMS[this.player.equip.armor]) d+=SHOP_ITEMS[this.player.equip.armor].def||0;
+        return d;
+    }
+
+    addBattleLog(msg) {
+        const logDiv=document.getElementById('battle-log');
+        const p=document.createElement('div'); p.innerHTML=`> ${msg}`;
+        logDiv.appendChild(p); p.scrollIntoView({behavior:'smooth',block:'nearest'});
+        if(logDiv.children.length>14) logDiv.removeChild(logDiv.firstChild);
+    }
+
+    playerAttack(isAuto=false) {
+        if(!this.currentEnemy||this.currentEnemy.hp<=0) return;
+        const factor=getElementFactor(this.player.elem,this.currentEnemy.elem);
+        let dmg=Math.floor(this.getAtk()*factor*(0.85+Math.random()*0.3));
+        dmg=Math.max(5,dmg);
+        this.currentEnemy.hp-=dmg;
+        if(!isAuto) this.addBattleLog(`⚔️ 造成 ${dmg} 點傷害！${factor>1?'🔥五行相剋！':(factor<1?'💧五行化解':'')}`);
+        this.updateBattleUI();
+        if(this.currentEnemy.hp<=0){ this.endBattle(true); return; }
+        this.enemyTurn();
+    }
+
+    playerDefend() { this.defending=true; this.addBattleLog(`🛡️ 防禦姿態！`); this.enemyTurn(); }
+
+    enemyTurn() {
+        if(!this.currentEnemy||this.currentEnemy.hp<=0) return;
+        const factor=getElementFactor(this.currentEnemy.elem,this.player.elem);
+        let dmg=Math.floor(this.currentEnemy.atk*factor*(0.85+Math.random()*0.3));
+        dmg=Math.max(3,dmg);
+        if(this.defending){ dmg=Math.floor(dmg*0.5); this.addBattleLog(`🛡️ 防禦成功！受 ${dmg} 點傷害`); this.defending=false; }
+        else this.addBattleLog(`💥 ${this.currentEnemy.type} 出招！造成 ${dmg} 點傷害`);
+        this.player.hp-=dmg;
+        if(this.player.hp<=0){ this.player.hp=0; this.updateBattleUI(); this.addBattleLog(`💀 你力竭倒下...失去50楓幣`); this.endBattle(false); return; }
+        this.updateBattleUI();
+        if(this.autoBattle&&this.inBattle&&this.currentEnemy&&this.currentEnemy.hp>0)
+            setTimeout(()=>this.autoBattleAction(),250);
+    }
+
+    fleeBattle() {
+        if(Math.random()<0.6){ this.addBattleLog(`🏃 脫身成功！`); this.endBattle(false,true); }
+        else { this.addBattleLog(`⚠️ 脫身失敗！`); this.enemyTurn(); }
+    }
+
+    toggleAuto() {
+        this.autoBattle=!this.autoBattle;
+        const btn=document.getElementById('auto-battle-btn');
+        btn.style.background=this.autoBattle?'linear-gradient(135deg,#27ae60,#2ecc71)':'';
+        btn.innerText=this.autoBattle?'🤖 自動 ON':'🤖 自動';
+        if(this.autoBattle&&this.inBattle) this.autoBattleAction();
+    }
+
+    autoBattleAction() {
+        if(this.inBattle&&this.autoBattle&&this.currentEnemy&&this.currentEnemy.hp>0&&this.player.hp>0)
+            this.playerAttack(true);
+    }
+
+    endBattle(playerWon, isFlee=false) {
+        document.getElementById('battle-modal').classList.remove('active');
+        if(playerWon&&this.currentEnemy) {
+            const reward=12+Math.floor(Math.random()*15);
+            this.player.parts+=reward;
+            this.player.exp+=35+this.player.lvl*2;
+            this.checkLevelUp();
+            if(Math.random()<0.65) {
+                let beast=this.currentEnemy.type;
+                this.player.inventory[beast]=(this.player.inventory[beast]||0)+1;
+                if(!this.beastLevels[beast]) this.beastLevels[beast]=1;
+                this.log(`📜 獲得【${beast}】靈獸印記！+${reward}楓幣`);
+            } else this.log(`⚔️ 斬妖 ${this.currentEnemy.type}，獲得 ${reward}楓幣`);
+        } else if(!playerWon&&!isFlee) {
+            this.player.parts=Math.max(0,this.player.parts-50);
+            this.player.hp=Math.floor(this.player.maxHp*0.4);
+            if(this.player.hp<=0) this.player.hp=15;
+            this.log(`💀 死而復生...失去50楓幣`);
+        } else if(isFlee) this.log(`🏃 成功脫離交戰`);
+        this.inBattle=false; this.currentEnemy=null; this.defending=false;
+        this.updateUI();
+    }
+
+    checkLevelUp() {
+        let need=this.player.lvl*60;
+        while(this.player.exp>=need) {
+            this.player.exp-=need; this.player.lvl++;
+            this.player.maxHp+=20; this.player.hp=this.player.maxHp;
+            this.player.atk+=5; this.player.def+=3;
+            this.log(`🌟 境界突破！晉升 Lv.${this.player.lvl} 俠客！`);
+            need=this.player.lvl*60;
+        }
+    }
+
+    upgrade(type) {
+        if(this.player.parts<50){ this.log(`❌ 楓幣不足（需要50）`); return; }
+        this.player.parts-=50;
+        if(type==='atk'){ this.player.atk+=10; this.log(`⚔️ 劍法精進！攻擊力提升至 ${this.player.atk}`); }
+        else { this.player.def+=8; this.log(`🛡️ 護體功法提升！防禦力至 ${this.player.def}`); }
+        this.updateUI();
+    }
+
+    // ======================== 商店 ========================
+    buy(name) {
+        const item=SHOP_ITEMS[name];
+        if(!item) return;
+        if(this.player.parts<item.price){ this.log(`❌ 楓幣不足！`); return; }
+        this.player.parts-=item.price;
+        this.player.inventory[name]=(this.player.inventory[name]||0)+1;
+        this.log(`🛍️ 購得 ${name}`);
+        this.updateUI();
+        app.refreshBag(); app.refreshShop();
+    }
+
+    use(name) {
+        const it=SHOP_ITEMS[name]; if(!it) return;
+        if(it.type==='use') {
+            it.effect(this.player);
+            this.player.inventory[name]--;
+            this.log(`🧪 使用了 ${name}`);
+        } else {
+            const slot=it.type==='weapon'?'weapon':'armor';
+            this.player.equip[slot]=name;
+            this.log(`🎽 裝備了 ${name}`);
+        }
+        if((this.player.inventory[name]||0)<=0) delete this.player.inventory[name];
+        this.updateUI();
+        app.refreshBag();
+    }
+
+    // ======================== 地圖推進 ========================
+    checkExplorationAndAdvance() {
+        const tx=Math.ceil(WORLD_W/GRID_SIZE), ty=Math.ceil(WORLD_H/GRID_SIZE);
+        let ex=0;
+        for(let i=0; i<=tx; i++) for(let j=0; j<=ty; j++) if(this.player.explored[`${i},${j}`]) ex++;
+        let pct=Math.min(100,Math.floor((ex/Math.max(1,tx*ty))*100));
+        document.getElementById('map-percent').innerText=pct;
+        if(pct>=100&&!this._advancedFlag) {
+            this._advancedFlag=true;
+            this.nextStage();
+            setTimeout(()=>{this._advancedFlag=false;},500);
+        }
+    }
+
+    nextStage() {
+        this.player.stage++;
+        this.player.explored={};
+        this.enemies=[];
+        this.player.x=TOWN_X+TOWN_SIZE/2; this.player.y=TOWN_Y+TOWN_SIZE/2;
+        this.clearFogInTown(); this.clearFogAroundPlayer();
+        for(let i=0; i<8; i++) this.spawnEnemy();
+        const mapName=MAP_NAMES[(this.player.stage-1)%MAP_NAMES.length];
+        this.log(`🌐 踏入【${mapName}】！第${this.player.stage}章，妖怪更強了！`);
+        this.updateUI();
+    }
+
+    // ======================== UI 更新 ========================
+    updateUI() {
+        const nameDisplay = this.myName || '俠客';
+        document.getElementById('p-name-display').innerText = nameDisplay;
+        // 同步輸入欄（若尚未填入）
+        const nameInput = document.getElementById('player-name-input');
+        if(nameInput && !nameInput.value && this.myName) nameInput.value = this.myName;
+        document.getElementById('p-lvl').innerText=this.player.lvl;
+        document.getElementById('p-hp').innerText=Math.floor(this.player.hp);
+        document.getElementById('p-maxHp').innerText=this.player.maxHp;
+        document.getElementById('p-atk').innerText=this.getAtk();
+        document.getElementById('p-def').innerText=this.getDef();
+        document.getElementById('p-parts').innerText=this.player.parts;
+        document.getElementById('p-stage').innerText=this.player.stage;
+        document.getElementById('hp-fill-mini').style.width=`${(this.player.hp/this.player.maxHp)*100}%`;
+        const eSpan=document.getElementById('p-elem');
+        eSpan.innerText=this.player.elem; eSpan.className=`elem-tag elem-${this.player.elem}`;
+        // 裝備顯示
+        document.getElementById('equip-w').innerText=this.player.equip.weapon||'無';
+        document.getElementById('equip-a').innerText=this.player.equip.armor||'無';
+        // 背包 pill
+        const inv=document.getElementById('inventory');
+        inv.innerHTML='';
+        let count=0;
+        for(let [n,c] of Object.entries(this.player.inventory)) if(c>0){
+            count++;
+            let p=document.createElement('span'); p.className='monster-pill';
+            p.innerText=`${n} x${c}`; inv.appendChild(p);
+        }
+        if(count===0) inv.innerHTML='<span style="font-size:10px;color:var(--text2);">背包空空如也</span>';
+        let bList=Object.keys(this.player.inventory).filter(n=>this.player.inventory[n]>0).slice(0,3).join(', ');
+        document.getElementById('active-beasts').innerText=bList||'無';
+        this.checkExplorationAndAdvance();
+    }
+
+    log(msg) {
+        const l=document.getElementById('log');
+        const d=document.createElement('div'); d.innerHTML=`> ${msg}`;
+        l.prepend(d);
+        if(l.children.length>12) l.removeChild(l.lastChild);
+    }
+
+    // ======================== 存檔讀檔 ========================
+    saveGame() {
+        const data=JSON.stringify({player:this.player, beastLevels:this.beastLevels, version:3},null,2);
+        const blob=new Blob([data],{type:"application/json"});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a'); a.href=url;
+        a.download=`ro_save_${Date.now()}.json`; a.click();
+        URL.revokeObjectURL(url);
+        this.log(`💾 俠客存檔已匯出`);
+    }
+
+    importSaveData(json) {
+        try {
+            const data=JSON.parse(json);
+            if(!data.player) throw new Error("無效格式");
+            this.player=data.player;
+            this.beastLevels=data.beastLevels||{};
+            this.enemies=[];
+            this.player.x=TOWN_X+TOWN_SIZE/2; this.player.y=TOWN_Y+TOWN_SIZE/2;
+            this.clearFogInTown(); this.clearFogAroundPlayer();
+            for(let i=0;i<8;i++) this.spawnEnemy();
+            this.updateUI();
+            this.log(`📀 讀檔成功！回到第${this.player.stage}章`);
+        } catch(e) { this.log(`❌ 讀檔失敗: ${e.message}`); }
+    }
+
+    // ======================== 魔物圖鑑 ========================
+    showBestiary() {
+        const container=document.getElementById('bestiary-list');
+        const beasts=Object.keys(this.player.inventory).filter(n=>this.player.inventory[n]>0);
+        if(beasts.length===0) {
+            container.innerHTML='<div style="color:var(--text2);">尚未收錄任何靈獸印記</div>';
+        } else {
+            container.innerHTML=beasts.map(b=>{
+                const lv=this.beastLevels[b]||1;
+                return `<div class="beast-level-item"><span>${getMonsterEmoji(b)||'🃏'} ${b}</span><span style="color:var(--accent2);">親密 Lv.${lv}</span></div>`;
+            }).join('');
+        }
+        document.getElementById('bestiary-modal').classList.add('active');
+    }
+
+    // ======================== 召喚合成 ========================
+    combineBeasts() {
+        const b1=document.getElementById('combine-beast1').value;
+        const b2=document.getElementById('combine-beast2').value;
+        const res=document.getElementById('combine-result');
+        if(!b1||!b2||b1===b2){ res.innerHTML='❌ 請選擇兩種不同的靈獸印記'; return; }
+        if((this.player.inventory[b1]||0)<1||(this.player.inventory[b2]||0)<1){ res.innerHTML='❌ 印記數量不足'; return; }
+        const lv1=this.beastLevels[b1]||1, lv2=this.beastLevels[b2]||1;
+        const newLv=Math.floor((lv1+lv2)/2)+1;
+        this.player.inventory[b1]--; this.player.inventory[b2]--;
+        if(this.player.inventory[b1]<=0) delete this.player.inventory[b1];
+        if(this.player.inventory[b2]<=0) delete this.player.inventory[b2];
+        const adv1=ADVANCED_BEASTS[b1], adv2=ADVANCED_BEASTS[b2];
+        let newBeast;
+        if(adv1&&adv1===adv2) newBeast=adv1;
+        else if(adv1&&!adv2) newBeast=adv1;
+        else if(!adv1&&adv2) newBeast=adv2;
+        else {
+            if(Math.random()<0.4) newBeast=MYTHIC_BEASTS[Math.floor(Math.random()*MYTHIC_BEASTS.length)];
+            else newBeast=SPAWN_POOL[Math.floor(Math.random()*SPAWN_POOL.length)]+'·精';
+        }
+        this.player.inventory[newBeast]=(this.player.inventory[newBeast]||0)+1;
+        this.beastLevels[newBeast]=newLv;
+        res.innerHTML=`✨ 合成成功！召喚出【${newBeast}】(Lv.${newLv}) ✨`;
+        this.updateUI(); app.refreshBag();
+        setTimeout(()=>{ document.getElementById('combine-modal').classList.remove('active'); },1500);
+    }
+
+    // ======================== 競技場 ========================
+    async startArenaBattle() {
+        const bName=document.getElementById('arena-beast').value;
+        if(!bName||(this.player.inventory[bName]||0)<=0){
+            document.getElementById('arena-log').innerHTML='❌ 請選擇有效的召喚獸'; return;
+        }
+        const eType=SPAWN_POOL[Math.floor(Math.random()*SPAWN_POOL.length)];
+        const eElem=ELEMENTS[Math.floor(Math.random()*ELEMENTS.length)];
+        let eHp=60+this.player.stage*10, eAtk=15+this.player.stage*3, eDef=6+this.player.stage;
+        const bLv=this.beastLevels[bName]||1;
+        let bHp=40+this.player.lvl*4+bLv*5;
+        let bAtk=12+this.player.lvl*2+bLv*3;
+        let bDef=5+this.player.lvl+bLv*2;
+        const logDiv=document.getElementById('arena-log');
+        logDiv.innerHTML=`> 🏟️ 開始！【${bName}】Lv.${bLv} vs 【${eType}】\n`;
+        const addLog=(m)=>{ logDiv.innerHTML+=`> ${m}\n`; logDiv.scrollTop=logDiv.scrollHeight; };
+        let bCurHp=bHp, eCurHp=eHp;
+        while(bCurHp>0&&eCurHp>0) {
+            let d1=Math.max(5,Math.floor(bAtk*(0.8+Math.random()*0.4)-eDef*0.3));
+            eCurHp-=d1; addLog(`${bName} 造成 ${d1}，${eType} 剩 ${Math.max(0,eCurHp)}`);
+            if(eCurHp<=0) break;
+            let d2=Math.max(5,Math.floor(eAtk*(0.8+Math.random()*0.4)-bDef*0.3));
+            bCurHp-=d2; addLog(`${eType} 反擊 ${d2}，${bName} 剩 ${Math.max(0,bCurHp)}`);
+        }
+        if(bCurHp<=0) {
+            addLog(`💀 敗北... ${bName} 力竭倒下。`);
+            this.player.inventory[bName]--;
+            if(this.player.inventory[bName]<=0) delete this.player.inventory[bName];
+            this.updateUI();
+        } else {
+            const rwd=20+Math.floor(Math.random()*20);
+            this.player.parts+=rwd;
+            this.player.exp+=40+this.player.lvl*2;
+            this.checkLevelUp();
+            this.beastLevels[bName]=(this.beastLevels[bName]||1)+1;
+            addLog(`🏆 大勝！${bName} 升至 Lv.${this.beastLevels[bName]}，+${rwd}楓幣！`);
+            this.updateUI();
+        }
+        setTimeout(()=>document.getElementById('arena-modal').classList.remove('active'),3000);
+    }
+
+    // ======================== P2P Mesh 連線 ========================
+    initPeerConnection() {
+        if(typeof Peer==='undefined'){ document.getElementById('my-id').innerText='離線模式'; return; }
+        this.myFullId = null;
+        const iceConfig={iceServers:[
+            {urls:'stun:stun.l.google.com:19302'},
+            {urls:'stun:stun1.l.google.com:19302'},
+            {urls:'stun:stun.cloudflare.com:3478'},
+            {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
+            {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'}
+        ]};
+        this.peer = new Peer(undefined,{config:iceConfig,debug:0,secure:true});
+
+        this.peer.on('open',(id)=>{
+            this.myFullId = id;
+            document.getElementById('my-id').innerText = id.length>14 ? id.slice(0,14)+'...' : id;
+            this.log(`🌐 俠客印記就緒！可與同道夥伴相聚`);
+            // 啟動位置廣播（每秒）
+            this._posBroadcastTimer = setInterval(()=>this._broadcastPos(), 1000);
+        });
+
+        this.peer.on('connection',(conn)=>{
+            this.log(`📨 ${conn.peer.slice(0,8)} 申請結義！`);
+            this._setupConn(conn);
+        });
+
+        this.peer.on('error',(err)=>{
+            const m={'network':'網路異常','peer-unavailable':'找不到夥伴','server-error':'伺服器異常'};
+            this.log(`❌ ${m[err.type]||`未知錯誤(${err.type})`}`);
+        });
+    }
+
+    /** 廣播自己位置給所有連線 */
+    setPlayerName() {
+        const input = document.getElementById('player-name-input');
+        const name = input.value.trim();
+        if(!name) { this.log('❌ 道號不能空白'); return; }
+        this.myName = name;
+        this.log(`✅ 道號已設為「${name}」`);
+        this._broadcastPos(); // 立刻廣播
+    }
+
+    _broadcastPos() {
+        const name = this.myName || (this.myFullId ? this.myFullId.slice(0,6) : '?');
+        const data = {
+            type:'pos',
+            originId: this.myFullId,   // 訊息的真實來源，relay 時不改變
+            x: this.player.x, y: this.player.y,
+            elem: this.player.elem, lvl: this.player.lvl,
+            name,
+            stall: this.myStall || []
+        };
+        this._broadcast(data);
+    }
+
+    /** 廣播訊息到所有連線（可排除某個 peer） */
+    _broadcast(data, excludeId=null) {
+        for(let [pid, conn] of this.connections.entries()) {
+            if(pid !== excludeId && conn && conn.open) {
+                try { conn.send(data); } catch(e) {}
+            }
+        }
+    }
+
+    /** 更新在線玩家列表 UI */
+    _updateOnlineUI() {
+        const count = this.connections.size;
+        document.getElementById('connect-status').innerText =
+            count > 0 ? `✦ ${count}人組隊中 ✦` : '未連線';
+        document.getElementById('connect-status').style.background =
+            count > 0 ? '#1a6b2b' : '';
+        // 線上名單
+        const names = [];
+        for(let [pid] of this.connections.entries()) {
+            const p = this.partners.get(pid);
+            names.push(p ? `${p.name}(Lv.${p.lvl})` : pid.slice(0,6));
+        }
+        document.getElementById('online-list').innerText = names.length ? names.join('、') : '無';
+    }
+
+    /** 建立單一連線的事件處理（webchat4 風格） */
+    _setupConn(conn) {
+        const timeout = setTimeout(()=>{
+            if(!conn.open){
+                this.log(`❌ 連線逾時`);
+                this.connections.delete(conn.peer);
+                this._updateOnlineUI();
+            }
+        }, 10000);
+
+        conn.on('open',()=>{
+            clearTimeout(timeout);
+            if(this.connections.has(conn.peer)) { conn.close(); return; }
+            this.connections.set(conn.peer, conn);
+            this.log(`🤝 與同道 ${conn.peer.slice(0,8)} 結義成功！`);
+            this._updateOnlineUI();
+
+            // 1. 立刻告訴對方我的位置
+            try { conn.send({type:'pos',
+                originId: this.myFullId,
+                x:this.player.x, y:this.player.y,
+                elem:this.player.elem, lvl:this.player.lvl,
+                name: this.myName || (this.myFullId?this.myFullId.slice(0,6):'?'),
+                stall: this.myStall||[]}); } catch(e){}
+
+            // 2. 請求對方的成員清單（webchat4：request_members）
+            try { conn.send({type:'request_members', requester:this.myFullId}); } catch(e){}
+
+            // 3. 向其他已連線夥伴廣播新人加入
+            this._broadcast({
+                type:'new_member_announce',
+                newPeerId: conn.peer
+            }, conn.peer);
+        });
+
+        conn.on('data',(data)=>{
+            this._handleData(data, conn);
+        });
+
+        conn.on('close',()=>{
+            clearTimeout(timeout);
+            this.connections.delete(conn.peer);
+            // partners key 是 originId（= peerId，因為自己廣播時 originId = myFullId = peerId）
+            this.partners.delete(conn.peer);
+            this._updateOnlineUI();
+            this.log(`🔌 同道 ${conn.peer.slice(0,8)} 離開`);
+        });
+
+        conn.on('error',()=>{
+            this.connections.delete(conn.peer);
+            this.partners.delete(conn.peer);
+            this._updateOnlineUI();
+        });
+    }
+
+    /** 處理收到的所有訊息 */
+    _handleData(data, fromConn) {
+        switch(data.type) {
+            case 'pos': {
+                // 用 originId 作為 key，避免 relay 時 key 混亂
+                const originId = data.originId || fromConn.peer;
+                // 忽略自己（可能被 relay 回來）
+                if(originId === this.myFullId) break;
+                const prev = this.partners.get(originId) || {};
+                this.partners.set(originId, {
+                    x: data.x, y: data.y,
+                    elem: data.elem, lvl: data.lvl,
+                    name: data.name || originId.slice(0,6),
+                    stall: data.stall || prev.stall || []
+                });
+                // relay：只轉發給「沒有直連到 originId」的節點，避免重複
+                for(let [pid, conn2] of this.connections.entries()) {
+                    if(pid === fromConn.peer) continue;          // 不回傳給來源
+                    if(pid === originId) continue;               // 他自己不用收
+                    if(this.connections.has(originId)) continue; // 大家都直連，不需 relay
+                    if(conn2 && conn2.open) {
+                        try { conn2.send(data); } catch(e) {}
+                    }
+                }
+                break;
+            }
+
+            case 'request_members': {
+                // 回傳我知道的所有成員ID（包含我自己）
+                const membersList = [this.myFullId, ...this.connections.keys()].filter(Boolean);
+                try { fromConn.send({type:'member_list_sync', members: membersList}); } catch(e){}
+                break;
+            }
+
+            case 'member_list_sync':
+                // 收到成員清單，嘗試與未連線的成員建立連線
+                if(data.members && Array.isArray(data.members)) {
+                    for(let pid of data.members) {
+                        if(pid && pid !== this.myFullId && !this.connections.has(pid)) {
+                            setTimeout(()=>this.connectToPeer(pid), 200);
+                        }
+                    }
+                }
+                break;
+
+            case 'new_member_announce':
+                // 有新夥伴加入，主動去連他
+                if(data.newPeerId && data.newPeerId !== this.myFullId && !this.connections.has(data.newPeerId)) {
+                    setTimeout(()=>this.connectToPeer(data.newPeerId), 200);
+                }
+                break;
+
+            case 'assist_req':
+                try { fromConn.send({type:'assist_ack'}); } catch(e){}
+                break;
+
+            case 'assist_ack': {
+                if(this.inBattle && this.currentEnemy && !this.assistCooldown){
+                    this.assistCooldown = true;
+                    const dmg = Math.floor(this.player.atk*0.9+Math.random()*12);
+                    this.currentEnemy.hp -= dmg;
+                    this.addBattleLog(`🤝 同道援手！額外 ${dmg} 點傷害！`);
+                    this.updateBattleUI();
+                    if(this.currentEnemy.hp<=0) this.endBattle(true);
+                    else this.enemyTurn();
+                    setTimeout(()=>{this.assistCooldown=false;},15000);
+                }
+                break;
+            }
+
+            case 'chat_msg': {
+                const chatOrigin = data.originId || fromConn.peer;
+                if(chatOrigin !== this.myFullId) {
+                    interactUI.receiveChat(chatOrigin, data.text, data.senderName);
+                }
+                // relay 給未直連者（只轉一次）
+                if(!data.originId) data.originId = fromConn.peer;
+                this._broadcast(data, fromConn.peer);
+                break;
+            }
+
+            case 'stall_sync': {
+                const stallOrigin = data.originId || fromConn.peer;
+                const pp2 = this.partners.get(stallOrigin);
+                if(pp2) {
+                    pp2.stall = data.stall || [];
+                    interactUI.refreshPartnerStall(stallOrigin);
+                }
+                break;
+            }
+
+            case 'trade_buy': {
+                // 對方要買我上架的東西
+                const result = interactUI.processBuyRequest(data.itemName, data.qty, fromConn.peer);
+                try { fromConn.send({type:'trade_buy_result', ...result, buyerName: data.buyerName}); } catch(ex){}
+                break;
+            }
+
+            case 'trade_buy_result':
+                interactUI.receiveBuyResult(data);
+                break;
+        }
+    }
+
+    connectToPeer(remoteId) {
+        if(!this.peer||!this.myFullId){ this.log(`❌ 尚未就緒`); return; }
+        if(!remoteId||remoteId.length<8){ this.log(`❌ 請貼上完整同道印記`); return; }
+        if(remoteId===this.myFullId){ this.log(`❌ 不能與自己結義`); return; }
+        if(this.connections.has(remoteId)){ return; } // 已連線，靜默跳過
+        this.log(`🔗 正在結義 ${remoteId.slice(0,8)}...`);
+        const conn = this.peer.connect(remoteId,{reliable:true,serialization:'json'});
+        this._setupConn(conn);
+    }
+
+    disconnectPeer() {
+        if(this._posBroadcastTimer){ clearInterval(this._posBroadcastTimer); this._posBroadcastTimer=null; }
+        for(let [,conn] of this.connections.entries()) { try{conn.close();}catch(e){} }
+        this.connections.clear();
+        this.partners.clear();
+        this._updateOnlineUI();
+        this.log(`🔌 已解除結義`);
+    }
+
+    requestAssist() {
+        if(this.connections.size===0){ this.addBattleLog(`❌ 尚未與同道結義`); return; }
+        if(this.assistCooldown){ this.addBattleLog(`⏳ 支援冷卻中`); return; }
+        this._broadcast({type:'assist_req'});
+        this.addBattleLog(`📿 呼喚同道援手...`);
+    }
+
+    copyId() {
+        if(!this.myFullId){ this.log(`❌ ID尚未就緒`); return; }
+        navigator.clipboard.writeText(this.myFullId)
+            .then(()=>this.log(`📋 俠客印記已複製！`))
+            .catch(()=>{ prompt('請手動複製ID：',this.myFullId); });
+    }
+}
+
+// ======================== QR Code / 掃碼控制器 ========================
+const qrUI = {
+    currentPanel: 'qr',
+    videoStream: null,
+    scanningActive: false,
+
+    open(panel) {
+        document.getElementById('qr-modal-overlay').classList.add('active');
+        this.switchPanel(panel || 'qr');
+    },
+
+    close() {
+        document.getElementById('qr-modal-overlay').classList.remove('active');
+        this.stopScan();
+    },
+
+    switchPanel(panel) {
+        this.currentPanel = panel;
+        document.getElementById('qr-panel').classList.toggle('active', panel === 'qr');
+        document.getElementById('scan-panel').classList.toggle('active', panel === 'scan');
+        document.getElementById('qr-tab-btn').classList.toggle('active', panel === 'qr');
+        document.getElementById('scan-tab-btn').classList.toggle('active', panel === 'scan');
+        if (panel === 'qr') { this.stopScan(); this.generateQR(); }
+        else { this.startScan(); }
+    },
+
+    generateQR() {
+        const id = (typeof game !== 'undefined' && game.myFullId) ? game.myFullId : null;
+        const wrap = document.getElementById('qr-code-img');
+        const hint = document.getElementById('qr-hint');
+        wrap.innerHTML = '';
+        if (!id) {
+            hint.innerText = '⏳ 角色 ID 尚未就緒，請稍候...';
+            setTimeout(() => { if (this.currentPanel === 'qr') this.generateQR(); }, 1500);
+            return;
+        }
+        hint.innerText = id;
+        try {
+            new QRCode(wrap, { text: id, width: 180, height: 180, colorDark: '#1a1a2e', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+        } catch(e) {
+            wrap.innerHTML = '<p style="color:#e91e8c;font-size:11px;">QRCode 載入失敗</p>';
+        }
+    },
+
+    async startScan() {
+        const video  = document.getElementById('scan-video');        // hidden
+        const canvas = document.getElementById('scan-draw-canvas');  // visible
+        const ctx    = canvas.getContext('2d');
+        const msgEl  = document.getElementById('scan-result-msg');
+        const wrap   = document.getElementById('scan-video-wrap');
+
+        msgEl.style.color = '';
+        msgEl.innerText = '📷 啟動相機中...';
+        wrap.classList.add('open');
+
+        try {
+            // 與 webchat4 完全相同的 getUserMedia 呼叫
+            this.videoStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
+            });
+            video.srcObject = this.videoStream;
+            video.play();
+            this.scanningActive = true;
+            msgEl.innerText = '🔍 請對準夥伴的 QR 碼...';
+
+            const tick = () => {
+                if (!this.scanningActive) return;
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    canvas.width  = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imageData.data, canvas.width, canvas.height);
+                    if (code && code.data && code.data.trim().length > 3) {
+                        const scannedId = code.data.trim();
+                        msgEl.style.color = '#27ae60';
+                        msgEl.innerText = '✅ 掃描成功！正在連線...';
+                        document.getElementById('remote-peer-id').value = scannedId;
+                        this.stopScan();
+                        setTimeout(() => {
+                            this.close();
+                            if (typeof game !== 'undefined') {
+                                game.connectToPeer(scannedId);
+                                game.log('📷 掃碼組隊：' + scannedId.slice(0, 10) + '...');
+                            }
+                        }, 700);
+                        return;
+                    }
+                }
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+
+        } catch(e) {
+            wrap.classList.remove('open');
+            msgEl.style.color = '#e74c3c';
+            msgEl.innerText = '❌ 無法開啟相機，請確認已授予相機權限';
+            console.error('[QR startScan]', e.name, e.message);
+        }
+    },
+
+    stopScan() {
+        this.scanningActive = false;
+        if (this.videoStream) {
+            this.videoStream.getTracks().forEach(t => t.stop());
+            this.videoStream = null;
+        }
+        const video = document.getElementById('scan-video');
+        if (video) { video.srcObject = null; }
+        const wrap = document.getElementById('scan-video-wrap');
+        if (wrap) wrap.classList.remove('open');
+        const msgEl = document.getElementById('scan-result-msg');
+        if (msgEl) { msgEl.style.color = ''; msgEl.innerText = '請對準夥伴的 QR 碼...'; }
+    }
+};
+
+// ======================== 互動 UI（聊天 + 交易）========================
+const interactUI = {
+    currentPid: null,   // 目前互動的夥伴 peerId
+    chatHistory: {},    // pid → [{from, text, time}]
+    currentTab: 'chat',
+
+    open(pid) {
+        this.currentPid = pid;
+        const pp = game.partners.get(pid);
+        const name = pp ? pp.name : pid.slice(0,6);
+        document.getElementById('interact-name').innerText = name;
+        document.getElementById('trade-partner-name').innerText = name;
+        this.switchTab('chat');
+        this.renderChatLog(pid);
+        this.refreshPartnerStall(pid);
+        this.refreshMyStall();
+        document.getElementById('interact-modal').classList.add('active');
+    },
+
+    switchTab(tab) {
+        this.currentTab = tab;
+        document.getElementById('itab-chat').style.display = tab==='chat' ? 'block' : 'none';
+        document.getElementById('itab-trade').style.display = tab==='trade' ? 'block' : 'none';
+        document.getElementById('itab-chat-btn').style.background = tab==='chat'
+            ? 'linear-gradient(135deg,#9b0060,var(--accent))' : 'rgba(128,128,128,0.2)';
+        document.getElementById('itab-trade-btn').style.background = tab==='trade'
+            ? 'linear-gradient(135deg,#0d47a1,#1565c0)' : 'rgba(128,128,128,0.2)';
+    },
+
+    // ───── 聊天 ─────
+    sendChat() {
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if(!text || !this.currentPid) return;
+        const name = game.myName || (game.myFullId ? game.myFullId.slice(0,6) : '我');
+        const msg = { type:'chat_msg', originId: game.myFullId, text, senderName: name, from: game.myFullId };
+        // 傳給對方（直連 or 廣播）
+        const conn = game.connections.get(this.currentPid);
+        if(conn && conn.open) conn.send(msg);
+        else game._broadcast(msg);
+        // 本地顯示
+        this._addChatEntry(this.currentPid, { from:'me', text, name:'我', time: this._ts() });
+        input.value = '';
+    },
+
+    quickChat(text) {
+        document.getElementById('chat-input').value = text;
+        this.sendChat();
+    },
+
+    receiveChat(fromPid, text, senderName) {
+        const entry = { from: fromPid, text, name: senderName || fromPid.slice(0,6), time: this._ts() };
+        // 存入所有涉及的聊天記錄（廣播訊息存在全局）
+        if(!this.chatHistory['global']) this.chatHistory['global'] = [];
+        this.chatHistory['global'].push(entry);
+        // 如果目前互動面板開著，刷新
+        if(document.getElementById('interact-modal').classList.contains('active') && this.currentTab==='chat') {
+            this._addChatEntry(this.currentPid, entry, true);
+        }
+        game.log(`💬 ${senderName||fromPid.slice(0,6)}: ${text.slice(0,18)}${text.length>18?'…':''}`);
+    },
+
+    renderChatLog(pid) {
+        const log = document.getElementById('chat-log');
+        log.innerHTML = '';
+        const history = (this.chatHistory['global'] || []);
+        history.slice(-30).forEach(e => {
+            const isMe = (e.from === game.myFullId || e.from === 'me');
+            const div = document.createElement('div');
+            div.style.cssText = `text-align:${isMe?'right':'left'}; margin:2px 0;`;
+            div.innerHTML = `<span style="color:${isMe?'#ff9fe5':'#7fe8ff'}">${e.name}</span>: ${this._esc(e.text)} <span style="color:#666; font-size:9px;">${e.time}</span>`;
+            log.appendChild(div);
+        });
+        log.scrollTop = log.scrollHeight;
+    },
+
+    _addChatEntry(pid, entry, incoming=false) {
+        const log = document.getElementById('chat-log');
+        const isMe = !incoming;
+        const div = document.createElement('div');
+        div.style.cssText = `text-align:${isMe?'right':'left'}; margin:2px 0;`;
+        div.innerHTML = `<span style="color:${isMe?'#ff9fe5':'#7fe8ff'}">${entry.name}</span>: ${this._esc(entry.text)} <span style="color:#666; font-size:9px;">${entry.time}</span>`;
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
+    },
+
+    // ───── 攤位 / 交易 ─────
+    refreshPartnerStall(pid) {
+        if(this.currentPid !== pid) return;
+        const pp = game.partners.get(pid);
+        const stall = (pp && pp.stall) ? pp.stall : [];
+        const container = document.getElementById('partner-stall');
+        if(!stall.length) {
+            container.innerHTML = '<div style="font-size:10px; color:var(--text2);">（尚無上架物品）</div>';
+            return;
+        }
+        container.innerHTML = stall.map((item, idx) => `
+            <div style="display:flex; justify-content:space-between; align-items:center;
+                background:rgba(0,0,0,0.15); border-radius:8px; padding:5px 8px; border:1px solid var(--border);">
+                <span style="font-size:11px; color:var(--text);">📦 ${this._esc(item.itemName)} × ${item.qty}</span>
+                <span style="font-size:11px; color:#f1c40f;">💰 ${item.price}z each</span>
+                <button class="act-btn gold" style="font-size:10px; padding:3px 8px;"
+                    onclick="interactUI.buyItem('${pid}', ${idx})">購買</button>
+            </div>`).join('');
+    },
+
+    buyItem(pid, stallIdx) {
+        const pp = game.partners.get(pid);
+        if(!pp || !pp.stall || !pp.stall[stallIdx]) return;
+        const item = pp.stall[stallIdx];
+        const totalCost = item.price * 1; // 買1個
+        if(game.player.parts < totalCost) {
+            game.log(`❌ 楓幣不足！需要 ${totalCost}z`); return;
+        }
+        // 送出購買請求
+        const conn = game.connections.get(pid);
+        const msg = { type:'trade_buy', itemName: item.itemName, qty: 1, buyerName: game.myName || (game.myFullId?game.myFullId.slice(0,6):'買家') };
+        if(conn && conn.open) conn.send(msg);
+        else game._broadcast(msg); // fallback
+        game.log(`⏳ 等待 ${pp.name} 確認交易...`);
+    },
+
+    processBuyRequest(itemName, qty, buyerPid) {
+        // 對方想購買我攤位上的物品
+        const idx = game.myStall.findIndex(s => s.itemName === itemName && s.qty >= qty);
+        if(idx < 0) return { ok:false, reason:'物品不足或已下架' };
+        const item = game.myStall[idx];
+        const totalCost = item.price * qty;
+        // 扣除庫存，增加楓幣
+        game.player.inventory[itemName] -= qty;
+        if(game.player.inventory[itemName] <= 0) delete game.player.inventory[itemName];
+        game.myStall[idx].qty -= qty;
+        if(game.myStall[idx].qty <= 0) game.myStall.splice(idx, 1);
+        game.player.parts += totalCost;
+        game.updateUI();
+        this.refreshMyStall();
+        game.log(`💰 ${itemName}×${qty} 已售出 +${totalCost}z！`);
+        return { ok:true, itemName, qty, totalCost };
+    },
+
+    receiveBuyResult(data) {
+        if(data.ok) {
+            game.player.parts -= data.totalCost;
+            game.player.inventory[data.itemName] = (game.player.inventory[data.itemName]||0) + data.qty;
+            game.updateUI();
+            game.log(`✅ 購得 ${data.itemName}×${data.qty}，花費 ${data.totalCost}楓幣！`);
+            // 刷新對方攤位
+            if(this.currentPid) this.refreshPartnerStall(this.currentPid);
+        } else {
+            game.log(`❌ 交易失敗：${data.reason}`);
+        }
+    },
+
+    refreshMyStall() {
+        const container = document.getElementById('my-stall');
+        const empty = document.getElementById('my-stall-empty');
+        const stall = game.myStall || [];
+        if(!stall.length) {
+            if(empty) empty.style.display = 'block';
+            // remove old rows but keep empty msg
+            Array.from(container.querySelectorAll('.stall-row')).forEach(el=>el.remove());
+            return;
+        }
+        if(empty) empty.style.display = 'none';
+        Array.from(container.querySelectorAll('.stall-row')).forEach(el=>el.remove());
+        stall.forEach((item, idx) => {
+            const div = document.createElement('div');
+            div.className = 'stall-row';
+            div.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.12); border-radius:8px; padding:5px 8px; border:1px solid var(--border); margin-bottom:3px;';
+            div.innerHTML = `
+                <span style="font-size:11px; color:var(--text);">📦 ${this._esc(item.itemName)} × ${item.qty}</span>
+                <span style="font-size:11px; color:#f1c40f;">💰 ${item.price}z</span>
+                <button class="act-btn gray" style="font-size:10px; padding:2px 7px;"
+                    onclick="interactUI.removeListing(${idx})">下架</button>`;
+            container.appendChild(div);
+        });
+    },
+
+    removeListing(idx) {
+        game.myStall.splice(idx, 1);
+        this.refreshMyStall();
+        game.log(`🛍️ 已下架物品`);
+    },
+
+    openListingEditor() {
+        const inv = game.player.inventory;
+        const keys = Object.keys(inv).filter(n => inv[n] > 0);
+        const sel = document.getElementById('listing-item-select');
+        sel.innerHTML = '<option value="">── 選擇物品 ──</option>' +
+            keys.map(n => `<option value="${n}">${n} (庫存${inv[n]})</option>`).join('');
+        document.getElementById('listing-qty').value = 1;
+        document.getElementById('listing-price').value = 100;
+        document.getElementById('listing-stock-info').innerText = '';
+        document.getElementById('listing-modal').classList.add('active');
+    },
+
+    onListingItemChange() {
+        const name = document.getElementById('listing-item-select').value;
+        const qty = game.player.inventory[name] || 0;
+        document.getElementById('listing-stock-info').innerText = name ? `庫存：${qty} 個` : '';
+        document.getElementById('listing-qty').max = qty;
+    },
+
+    confirmListing() {
+        const name = document.getElementById('listing-item-select').value;
+        const qty = parseInt(document.getElementById('listing-qty').value) || 0;
+        const price = parseInt(document.getElementById('listing-price').value) || 0;
+        if(!name) { alert('請選擇物品'); return; }
+        if(qty < 1 || qty > (game.player.inventory[name]||0)) { alert('數量無效'); return; }
+        if(price < 1) { alert('請輸入有效定價'); return; }
+        // 加入攤位（從背包扣除）
+        game.player.inventory[name] -= qty;
+        if(game.player.inventory[name] <= 0) delete game.player.inventory[name];
+        // 合併同物品
+        const existing = game.myStall.find(s => s.itemName === name && s.price === price);
+        if(existing) existing.qty += qty;
+        else game.myStall.push({ itemName: name, qty, price });
+        game.updateUI();
+        this.refreshMyStall();
+        document.getElementById('listing-modal').classList.remove('active');
+        game.log(`🏮 上架 ${name}×${qty} @ ${price}楓幣`);
+    },
+
+    // ───── 工具 ─────
+    _ts() { return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); },
+    _esc(s) { return String(s).replace(/[&<>]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+};
+
+// ======================== App 控制器 ========================
+const app = {
+    currentTab: 'main',
+    tab(id) {
+        ['main','bag','shop','beast','net'].forEach(t=>{
+            document.getElementById('tab-'+t).style.display='none';
+            const btn=document.querySelector(`[onclick="app.tab('${t}')"]`);
+            if(btn) btn.classList.remove('active');
+        });
+        document.getElementById('tab-'+id).style.display='block';
+        const activeBtn=document.querySelector(`[onclick="app.tab('${id}')"]`);
+        if(activeBtn) activeBtn.classList.add('active');
+        this.currentTab=id;
+        if(id==='bag') this.refreshBag();
+        if(id==='shop') this.refreshShop();
+        if(id==='beast') this.refreshBeast();
+    },
+    refreshShop() {
+        document.getElementById('shop-list').innerHTML=Object.keys(SHOP_ITEMS).map(n=>`
+            <div class="card">${n}<br><small style="color:var(--text2);">${SHOP_ITEMS[n].desc}</small><br>💰${SHOP_ITEMS[n].price}z<br>
+            <button onclick="game.buy('${n}')">購買</button></div>`).join('');
+    },
+    refreshBag() {
+        const inv=game.player.inventory;
+        const keys=Object.keys(inv).filter(n=>inv[n]>0);
+        if(keys.length===0){ document.getElementById('bag-list').innerHTML='<div style="color:var(--text2);font-size:11px;grid-column:span 2;">背包是空的</div>'; return; }
+        document.getElementById('bag-list').innerHTML=keys.map(n=>`
+            <div class="card">${n} (x${inv[n]})<br><small style="color:var(--text2);">${SHOP_ITEMS[n]?SHOP_ITEMS[n].desc:''}</small><br>
+            <button onclick="game.use('${n}')">${SHOP_ITEMS[n]&&SHOP_ITEMS[n].type==='use'?'使用':'裝備'}</button></div>`).join('');
+    },
+    refreshBeast() {
+        // 重新整理召喚獸頁面的 inventory pill
+        game.updateUI();
+    },
+    openCombine() {
+        const beasts=Object.keys(game.player.inventory).filter(n=>game.player.inventory[n]>0);
+        const opts='<option value="">選擇靈獸印記</option>'+beasts.map(n=>`<option value="${n}">${n} x${game.player.inventory[n]}</option>`).join('');
+        document.getElementById('combine-beast1').innerHTML=opts;
+        document.getElementById('combine-beast2').innerHTML=opts;
+        document.getElementById('combine-result').innerHTML='';
+        document.getElementById('combine-modal').classList.add('active');
+    },
+    openArena() {
+        const beasts=Object.keys(game.player.inventory).filter(n=>game.player.inventory[n]>0);
+        document.getElementById('arena-beast').innerHTML='<option value="">選擇召喚獸</option>'+beasts.map(n=>`<option value="${n}">${n} (Lv.${game.beastLevels[n]||1})</option>`).join('');
+        document.getElementById('arena-log').innerHTML='等待挑戰...';
+        document.getElementById('arena-modal').classList.add('active');
+    }
+};
+
+// 啟動
+let game;
+window.onload = () => {
+    game = new RagnarokEngine();
+    window.game = game;
+    // 初始化商店
+    app.refreshShop();
+    // 首次互動後啟動音效
+    document.addEventListener('pointerdown', () => AudioSystem.start(), { once: true });
+    // 插入靜音按鈕
+    AudioSystem.injectMuteBtn();
+};
+
+// ==================== 薩爾達風格音效系統 ====================
+// 各場景 3 首音樂，隨機輪播，10 秒環境循環
+const AudioSystem = (() => {
+    let ctx = null;
+    let muted = false;
+    let started = false;
+    let bgTimer = null;
+    let currentScene = 'explore';
+    let trackIndices = {};  // 場景 → 上次播放的曲目索引
+
+    function ac() {
+        if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+        return ctx;
+    }
+
+    // ── 基礎音符 ──────────────────────────────────────────
+    function note(type, freq, t, dur, vol = 0.14, detune = 0) {
+        const a = ac();
+        const o = a.createOscillator();
+        const g = a.createGain();
+        o.connect(g); g.connect(a.destination);
+        o.type = type; o.frequency.value = freq; o.detune.value = detune;
+        const st = a.currentTime + t;
+        g.gain.setValueAtTime(0, st);
+        g.gain.linearRampToValueAtTime(vol, st + 0.025);
+        g.gain.exponentialRampToValueAtTime(0.001, st + dur);
+        o.start(st); o.stop(st + dur + 0.05);
+    }
+
+    // 帶混響的音符（城鎮/探索用）
+    function noteR(type, freq, t, dur, vol = 0.12) {
+        note(type, freq, t, dur, vol);
+        note(type, freq, t + 0.18, dur * 0.7, vol * 0.18);  // 短殘響
+    }
+
+    // 噪音打擊
+    function noise(t, dur, vol = 0.10, freq = 500, q = 1.0) {
+        const a = ac();
+        const buf = a.createBuffer(1, Math.ceil(a.sampleRate * dur), a.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        const src = a.createBufferSource(); src.buffer = buf;
+        const flt = a.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = freq; flt.Q.value = q;
+        const g = a.createGain();
+        src.connect(flt); flt.connect(g); g.connect(a.destination);
+        const st = a.currentTime + t;
+        g.gain.setValueAtTime(vol, st);
+        g.gain.exponentialRampToValueAtTime(0.001, st + dur);
+        src.start(st); src.stop(st + dur + 0.05);
+    }
+
+    // ── 場景 BGM 定義（每場景 3 首，各 ≤15 音符）──────────
+
+    const BGM = {
+
+        // 🗺️ 探索/移動（薩爾達大地主題風格）
+        explore: [
+            // 曲1：平靜草原行走，G大調五聲
+            () => {
+                const n = noteR;
+                n('sine',392.0,0.0,0.9,0.11); n('sine',440.0,1.0,0.8,0.10);
+                n('sine',523.3,2.0,0.9,0.12); n('sine',587.3,3.0,0.7,0.10);
+                n('sine',659.3,4.0,1.0,0.13); n('sine',523.3,5.2,0.8,0.10);
+                n('sine',440.0,6.2,1.0,0.11); n('sine',392.0,7.4,0.9,0.12);
+                // 底音
+                note('triangle',196.0,0.0,3.5,0.07); note('triangle',196.0,3.5,3.5,0.07);
+                note('triangle',220.0,7.0,3.0,0.07);
+            },
+            // 曲2：森林探索，飄渺感
+            () => {
+                [0,1.2,2.5,3.8,5.0,6.3,7.6,9.0].forEach((t,i)=>{
+                    const fs=[329.6,392.0,440.0,392.0,349.2,392.0,440.0,329.6];
+                    noteR('triangle',fs[i],t,1.1,0.10);
+                });
+                note('sine',164.8,0,5,0.06); note('sine',196.0,5,5,0.06);
+            },
+            // 曲3：山岳地帶，雄壯步伐
+            () => {
+                const seq=[293.7,349.2,392.0,440.0,523.3,440.0,392.0,349.2,293.7,261.6,293.7,349.2];
+                seq.forEach((f,i)=> note('square',f,i*0.80,0.65,0.09));
+                note('triangle',98.0,0,5,0.08); note('triangle',110.0,5,5,0.08);
+                noise(3.8,0.12,0.07,300,1.5);
+            },
+        ],
+
+        // ⚔️ 戰鬥（緊張激烈）
+        battle: [
+            // 曲1：遭遇戰，快速節奏
+            () => {
+                [0,0.4,0.8,1.3,1.7,2.2,2.6,3.1,3.5,4.0,4.5,5.0,5.5,6.0,6.5].forEach((t,i)=>{
+                    const fs=[220,293.7,246.9,329.6,293.7,392,349.2,440,392,493.9,440,392,349.2,329.6,293.7];
+                    note('square',fs[i],t,0.32,0.11);
+                });
+                [0,0.8,1.6,2.4,3.2,4.0,4.8,5.6,6.4].forEach(t=> noise(t,0.10,0.14,150,2.0));
+                [0.4,1.2,2.0,2.8,3.6,4.4,5.2,6.0,6.8].forEach(t=> noise(t,0.06,0.08,3000,0.7));
+            },
+            // 曲2：BOSS戰，重拍震盪
+            () => {
+                const mel=[164.8,196,220,246.9,293.7,220,196,164.8,146.8,164.8,196,220,246.9,293.7,220];
+                mel.forEach((f,i)=> note('sawtooth',f,i*0.65,0.55,0.12));
+                [0,1.3,2.6,3.9,5.2,6.5].forEach(t=> noise(t,0.18,0.20,100,2.5));
+                [0.65,1.95,3.25,4.55,5.85].forEach(t=> noise(t,0.08,0.10,2500,0.8));
+            },
+            // 曲3：緊急戰鬥，切分節奏
+            () => {
+                const mel=[329.6,293.7,329.6,392,349.2,329.6,293.7,261.6,293.7,329.6,392,440,392,349.2,329.6];
+                mel.forEach((f,i)=> note('square',f,i*0.62,0.50,0.10));
+                [0,0.62,1.24,1.86,2.48,3.10,3.72,4.34,4.96,5.58,6.20,6.82].forEach(t=>{
+                    noise(t,0.08,0.12,200,2.0);
+                    if(t%1.24<0.1) noise(t+0.05,0.05,0.08,3500,0.6);
+                });
+            },
+        ],
+
+        // 🏘️ 城鎮（溫暖輕快）
+        town: [
+            // 曲1：楓葉村廣場，歡快市集
+            () => {
+                const mel=[523.3,587.3,659.3,698.5,783.9,698.5,659.3,587.3,523.3,587.3,659.3,783.9];
+                mel.forEach((f,i)=> noteR('sine',f,i*0.78,0.65,0.11));
+                note('triangle',261.6,0,5,0.06); note('triangle',293.7,5,5,0.06);
+                [1.5,3.0,4.5,6.0,7.5].forEach(t=> noise(t,0.05,0.05,4000,0.5));
+            },
+            // 曲2：村莊午後，悠閒散步
+            () => {
+                [0,0.9,1.8,2.7,3.7,4.6,5.5,6.4,7.3,8.2,9.0].forEach((t,i)=>{
+                    const fs=[659.3,587.3,523.3,587.3,659.3,698.5,783.9,698.5,659.3,587.3,523.3];
+                    noteR('triangle',fs[i],t,0.85,0.10);
+                });
+                note('sine',130.8,0,10,0.05);
+            },
+            // 曲3：仙人長廊，神秘市集
+            () => {
+                const mel=[392,440,523.3,440,392,349.2,392,440,523.3,587.3,659.3,587.3,523.3,440,392];
+                mel.forEach((f,i)=> noteR('sine',f,i*0.67,0.58,0.10));
+                note('triangle',196,0,5,0.06); note('triangle',220,5,5,0.07);
+            },
+        ],
+
+        // 🛍️ 交易（輕柔商談）
+        trade: [
+            // 曲1：銅幣叮響，和諧討價
+            () => {
+                [0,0.7,1.4,2.1,2.8,3.5,4.2,4.9,5.6,6.3,7.0,7.7].forEach((t,i)=>{
+                    const fs=[523.3,659.3,783.9,659.3,523.3,587.3,659.3,783.9,880,783.9,659.3,523.3];
+                    note('sine',fs[i],t,0.55,0.09);
+                });
+                note('triangle',261.6,0,10,0.05);
+                [0,2.0,4.0,6.0,8.0].forEach(t=> noise(t,0.06,0.07,5000,1.2));
+            },
+            // 曲2：密室交易，神秘低調
+            () => {
+                [0,1.0,2.1,3.2,4.3,5.4,6.5,7.6,8.7].forEach((t,i)=>{
+                    const fs=[329.6,392,440,392,349.2,329.6,293.7,329.6,392];
+                    noteR('triangle',fs[i],t,0.9,0.09);
+                });
+                note('sine',164.8,0,5,0.05); note('sine',196,5,5,0.05);
+            },
+            // 曲3：市場喧囂，活力討價
+            () => {
+                const mel=[440,523.3,587.3,523.3,659.3,587.3,523.3,440,392,440,523.3,659.3,523.3,440,392];
+                mel.forEach((f,i)=> note('sine',f,i*0.65,0.52,0.09));
+                [0.5,1.5,2.5,3.5,4.5,5.5,6.5].forEach(t=> noise(t,0.04,0.06,4500,0.8));
+            },
+        ],
+
+        // 🔮 合成/煉化（神秘魔法）
+        combine: [
+            // 曲1：靈獸煉化，炫光旋轉
+            () => {
+                [0,0.55,1.1,1.65,2.2,2.75,3.3,3.85,4.4,4.95,5.5,6.05,6.6,7.15,7.7].forEach((t,i)=>{
+                    const fs=[261.6,329.6,392,440,523.3,659.3,783.9,880,1046.5,880,783.9,659.3,523.3,440,392];
+                    note('sine',fs[i],t,0.48,0.10);
+                });
+                note('triangle',65.4,0,10,0.06);
+            },
+            // 曲2：秘術施展，幽靈波紋
+            () => {
+                [0,0.8,1.6,2.4,3.2,4.0,4.8,5.6,6.4,7.2,8.0,8.8].forEach((t,i)=>{
+                    const fs=[440,523.3,622.3,698.5,783.9,880,783.9,698.5,622.3,523.3,440,392];
+                    noteR('sine',fs[i],t,0.7,0.09);
+                });
+                noise(2,0.3,0.08,800,1.5); noise(6,0.3,0.08,600,1.5);
+            },
+            // 曲3：化神升華，七彩靈光
+            () => {
+                const mel=[329.6,392,466.2,523.3,587.3,659.3,740,783.9,880,783.9,740,659.3,587.3,523.3,466.2];
+                mel.forEach((f,i)=> note('triangle',f,i*0.65,0.58,0.09,i%2===0?0:8));
+                note('sine',130.8,0,5,0.05); note('sine',146.8,5,5,0.05);
+            },
+        ],
+
+        // ⚔️ 競技場（熱血史詩）
+        arena: [
+            // 曲1：試煉出征，英雄進行曲
+            () => {
+                const mel=[164.8,196,220,246.9,293.7,329.6,293.7,246.9,293.7,349.2,392,440,392,349.2,293.7];
+                mel.forEach((f,i)=> note('square',f,i*0.65,0.55,0.12));
+                [0,1.3,2.6,3.9,5.2,6.5,7.8].forEach(t=> noise(t,0.12,0.16,100,2.5));
+                [0.65,1.95,3.25,4.55,5.85,7.15].forEach(t=> noise(t,0.06,0.09,3000,0.7));
+            },
+            // 曲2：激鬥對決，鼓點衝刺
+            () => {
+                const mel=[220,261.6,293.7,329.6,392,440,392,349.2,329.6,293.7,261.6,220,246.9,293.7,329.6];
+                mel.forEach((f,i)=> note('sawtooth',f,i*0.63,0.52,0.11));
+                [0,0.63,1.26,1.89,2.52,3.15,3.78,4.41,5.04,5.67,6.30,6.93,7.56].forEach(t=>{
+                    noise(t,0.10,0.13,120,2.2);
+                    noise(t+0.315,0.05,0.07,4000,0.6);
+                });
+            },
+            // 曲3：決戰頂點，史詩顛峰
+            () => {
+                [0,0.5,1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0].forEach((t,i)=>{
+                    const fs=[196,246.9,293.7,349.2,392,440,493.9,523.3,493.9,440,392,349.2,293.7,246.9,196];
+                    note('square',fs[i],t,0.42,0.12);
+                    note('sawtooth',fs[i]*2,t,0.20,0.05);
+                });
+                [0,1.0,2.0,3.0,4.0,5.0,6.0,7.0].forEach(t=> noise(t,0.15,0.20,80,3.0));
+            },
+        ],
+    };
+
+    // ── BGM 輪播邏輯 ─────────────────────────────────────
+    function pickTrack(scene) {
+        const tracks = BGM[scene] || BGM.explore;
+        const prev = trackIndices[scene] ?? -1;
+        let next;
+        do { next = Math.floor(Math.random() * tracks.length); } while (tracks.length > 1 && next === prev);
+        trackIndices[scene] = next;
+        return tracks[next];
+    }
+
+    function playBGM(scene) {
+        if (muted) return;
+        clearTimeout(bgTimer);
+        currentScene = scene;
+        const track = pickTrack(scene);
+        track();
+        bgTimer = setTimeout(() => playBGM(scene), 10000);
+    }
+
+    function setScene(scene) {
+        if (scene === currentScene) return;
+        clearTimeout(bgTimer);
+        playBGM(scene);
+    }
+
+    // ── 功能音效（SFX）───────────────────────────────────
+    const SFX = {
+        // 移動腳步（輕）
+        step: () => {
+            noise(0, 0.06, 0.07, 400, 0.8);
+        },
+        // 進城鎮
+        enterTown: () => {
+            note('sine',523.3,0,0.4,0.14); note('sine',659.3,0.2,0.4,0.12);
+            note('sine',783.9,0.4,0.6,0.13); note('sine',1046.5,0.6,0.5,0.10);
+        },
+        // 離開城鎮
+        leaveTown: () => {
+            note('sine',783.9,0,0.3,0.12); note('sine',659.3,0.2,0.3,0.10);
+            note('sine',523.3,0.4,0.5,0.11);
+        },
+        // 戰鬥開始
+        battleStart: () => {
+            note('square',220,0,0.15,0.18); note('square',293.7,0.1,0.15,0.16);
+            note('square',440,0.2,0.20,0.18); noise(0,0.25,0.22,200,2.0);
+            noise(0.2,0.15,0.15,1500,1.2);
+        },
+        // 玩家攻擊
+        attack: () => {
+            note('sawtooth',329.6,0,0.10,0.18); noise(0,0.12,0.18,800,1.5);
+        },
+        // 防禦
+        defend: () => {
+            note('square',261.6,0,0.20,0.15); noise(0,0.15,0.12,300,2.0);
+        },
+        // 敵人受傷
+        enemyHit: () => {
+            noise(0,0.10,0.16,600,1.8); note('square',196,0.05,0.12,0.10);
+        },
+        // 玩家受傷
+        playerHit: () => {
+            noise(0,0.15,0.20,300,2.5); note('sawtooth',130.8,0,0.20,0.12);
+        },
+        // 戰鬥勝利
+        win: () => {
+            [261.6,329.6,392,523.3,659.3,783.9].forEach((f,i)=>{
+                note('sine',f,i*0.10,0.40,0.14-i*0.01);
+            });
+            noise(0,0.15,0.15,200,2.0); noise(0.6,0.20,0.10,1000,1.0);
+        },
+        // 戰鬥失敗
+        lose: () => {
+            [523.3,440,392,329.6,261.6].forEach((f,i)=>{
+                note('sine',f,i*0.15,0.35,0.13);
+            });
+            noise(0.5,0.30,0.12,300,1.8);
+        },
+        // 逃跑
+        flee: () => {
+            note('square',440,0,0.08,0.14); note('square',523.3,0.08,0.08,0.12);
+            noise(0,0.20,0.10,1200,1.0);
+        },
+        // 開啟商店
+        shop: () => {
+            note('sine',659.3,0,0.15,0.14); note('sine',783.9,0.12,0.15,0.13);
+            note('sine',1046.5,0.26,0.25,0.12); noise(0,0.06,0.10,4000,1.2);
+        },
+        // 購買物品
+        buy: () => {
+            note('sine',783.9,0,0.12,0.15); note('sine',1046.5,0.10,0.18,0.14);
+            noise(0.02,0.05,0.12,5000,1.5);
+        },
+        // 出售物品
+        sell: () => {
+            note('sine',523.3,0,0.10,0.13); note('sine',659.3,0.08,0.12,0.12);
+            noise(0,0.05,0.10,4500,1.2);
+        },
+        // 合成開始
+        combineStart: () => {
+            [261.6,329.6,392,523.3,659.3,880].forEach((f,i)=>{
+                note('sine',f,i*0.10,0.60,0.11,i*5);
+            });
+            noise(0.5,0.25,0.10,600,1.5);
+        },
+        // 合成成功
+        combineSuccess: () => {
+            [523.3,659.3,783.9,1046.5,1318.5].forEach((f,i)=>{
+                note('sine',f,i*0.08,0.5,0.14);
+                note('triangle',f*1.5,i*0.08,0.3,0.06);
+            });
+            noise(0.3,0.3,0.12,800,1.2);
+        },
+        // 合成失敗
+        combineFail: () => {
+            [440,392,349.2,293.7].forEach((f,i)=> note('sine',f,i*0.15,0.30,0.12));
+            noise(0,0.20,0.15,400,2.0);
+        },
+        // 競技場進入
+        arenaEnter: () => {
+            note('square',196,0,0.20,0.16); note('square',246.9,0.15,0.20,0.14);
+            note('square',293.7,0.30,0.25,0.16); note('square',392,0.50,0.40,0.18);
+            noise(0,0.20,0.20,100,3.0); noise(0.5,0.15,0.14,500,1.5);
+        },
+        // 競技場獲勝
+        arenaWin: () => {
+            [196,246.9,293.7,392,493.9,587.3].forEach((f,i)=>{
+                note('square',f,i*0.09,0.5,0.14);
+                note('sawtooth',f*2,i*0.09,0.25,0.06);
+            });
+            noise(0,0.20,0.22,80,3.5); noise(0.5,0.25,0.15,400,2.0);
+        },
+        // 升級
+        levelUp: () => {
+            [261.6,329.6,392,523.3,659.3,783.9,1046.5].forEach((f,i)=>{
+                note('sine',f,i*0.08,0.50,0.14);
+                note('triangle',f*2,i*0.08,0.30,0.06);
+            });
+            noise(0.5,0.30,0.12,1000,1.5);
+        },
+        // 存檔
+        save: () => {
+            note('sine',523.3,0,0.12,0.14); note('sine',659.3,0.12,0.12,0.13);
+            note('sine',783.9,0.24,0.18,0.14); note('sine',1046.5,0.42,0.30,0.13);
+        },
+        // 開啟交易
+        tradeOpen: () => {
+            note('sine',523.3,0,0.18,0.12); note('sine',659.3,0.12,0.18,0.11);
+            noise(0,0.05,0.08,4000,1.0);
+        },
+        // 裝備物品
+        equip: () => {
+            note('square',440,0,0.10,0.14); note('square',659.3,0.08,0.10,0.13);
+            noise(0,0.08,0.12,2000,1.5);
+        },
+        // 靜音確認
+        toggleMute: () => {
+            note('sine', muted ? 880 : 440, 0, 0.14, 0.14);
+        },
+    };
+
+    function play(name) {
+        if (muted) return;
+        if (SFX[name]) SFX[name]();
+    }
+
+    function start() {
+        if (started) return;
+        started = true;
+        const a = ac();
+        if (a.state === 'suspended') a.resume();
+        playBGM('explore');
+    }
+
+    function toggleMute() {
+        muted = !muted;
+        if (muted) { clearTimeout(bgTimer); bgTimer = null; }
+        else { if (!started) start(); else playBGM(currentScene); }
+        const btn = document.getElementById('audio-mute-btn');
+        if (btn) btn.textContent = muted ? '🔇' : '🔊';
+        if (!muted) SFX.toggleMute();
+    }
+
+    function injectMuteBtn() {
+        const btn = document.createElement('button');
+        btn.id = 'audio-mute-btn';
+        btn.className = 'act-btn gray';
+        btn.textContent = '🔊';
+        btn.title = '音效開關';
+        btn.style.cssText = 'position:fixed; top:6px; right:8px; z-index:9999; padding:3px 10px; font-size:13px; border-radius:20px;';
+        btn.onclick = toggleMute;
+        document.body.appendChild(btn);
+    }
+
+    return { start, play, setScene, playBGM, injectMuteBtn, toggleMute };
+})();
+
+// ── 場景偵測與音效掛鉤 ────────────────────────────────────
+
+// 分頁切換 → 場景音樂
+const _appTab = app.tab.bind(app);
+app.tab = function(name) {
+    _appTab(name);
+    if (name === 'shop') AudioSystem.setScene('trade');
+    else if (name === 'beast') AudioSystem.setScene('combine');
+    else if (name === 'main') {
+        // 根據是否在城鎮決定場景
+        if (game && game.inTown) AudioSystem.setScene('town');
+        else AudioSystem.setScene('explore');
+    }
+    if (name === 'shop') AudioSystem.play('shop');
+};
+
+// 合成視窗
+const _openCombine = app.openCombine.bind(app);
+app.openCombine = function() {
+    AudioSystem.setScene('combine');
+    AudioSystem.play('combineStart');
+    _openCombine();
+};
+
+// 競技場視窗
+const _openArena = app.openArena.bind(app);
+app.openArena = function() {
+    AudioSystem.setScene('arena');
+    AudioSystem.play('arenaEnter');
+    _openArena();
+};
+
+// 模態關閉 → 回探索/城鎮
+['combine-modal','arena-modal','bestiary-modal','battle-modal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const observer = new MutationObserver(() => {
+        if (!el.classList.contains('active')) {
+            setTimeout(() => {
+                if (game && game.inTown) AudioSystem.setScene('town');
+                else AudioSystem.setScene('explore');
+            }, 300);
+        }
+    });
+    observer.observe(el, { attributes: true, attributeFilter: ['class'] });
+});
+
+// 城鎮進出偵測（透過 RagnarokEngine.inTown 狀態監聽）
+let _wasInTown = false;
+setInterval(() => {
+    if (!game) return;
+    const now = !!game.inTown;
+    if (now !== _wasInTown) {
+        _wasInTown = now;
+        if (now) { AudioSystem.setScene('town'); AudioSystem.play('enterTown'); }
+        else { AudioSystem.setScene('explore'); AudioSystem.play('leaveTown'); }
+    }
+}, 500);
+
+// ── 掛鉤 RagnarokEngine 方法 ────────────────────────────
+
+// 等 game 初始化後再掛鉤
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        if (!game) return;
+
+        // 移動
+        const _move = game.movePlayer?.bind(game);
+        if (_move) {
+            let stepCounter = 0;
+            game.movePlayer = function(...args) {
+                _move(...args);
+                if (++stepCounter % 22 === 0) AudioSystem.play('step');
+            };
+        }
+
+        // 戰鬥開始
+        const _startBattle = game.startBattle?.bind(game);
+        if (_startBattle) {
+            game.startBattle = function(...args) {
+                AudioSystem.setScene('battle');
+                AudioSystem.play('battleStart');
+                _startBattle(...args);
+            };
+        }
+
+        // 玩家攻擊
+        const _pAtk = game.playerAttack?.bind(game);
+        if (_pAtk) {
+            game.playerAttack = function(...args) {
+                AudioSystem.play('attack');
+                _pAtk(...args);
+            };
+        }
+
+        // 玩家防禦
+        const _pDef = game.playerDefend?.bind(game);
+        if (_pDef) {
+            game.playerDefend = function(...args) {
+                AudioSystem.play('defend');
+                _pDef(...args);
+            };
+        }
+
+        // 逃跑
+        const _flee = game.fleeBattle?.bind(game);
+        if (_flee) {
+            game.fleeBattle = function(...args) {
+                AudioSystem.play('flee');
+                _flee(...args);
+                setTimeout(() => {
+                    if (game.inTown) AudioSystem.setScene('town');
+                    else AudioSystem.setScene('explore');
+                }, 400);
+            };
+        }
+
+        // 合成
+        const _combine = game.combineBeasts?.bind(game);
+        if (_combine) {
+            game.combineBeasts = function(...args) {
+                const before = JSON.stringify(game.player.inventory);
+                _combine(...args);
+                const after = JSON.stringify(game.player.inventory);
+                if (before !== after) AudioSystem.play('combineSuccess');
+                else AudioSystem.play('combineFail');
+            };
+        }
+
+        // 競技場對戰
+        const _arena = game.startArenaBattle?.bind(game);
+        if (_arena) {
+            game.startArenaBattle = function(...args) {
+                AudioSystem.play('battleStart');
+                _arena(...args);
+            };
+        }
+
+        // 升級偵測
+        let _lastLvl = game.player?.lvl || 1;
+        setInterval(() => {
+            if (!game?.player) return;
+            if (game.player.lvl > _lastLvl) {
+                _lastLvl = game.player.lvl;
+                AudioSystem.play('levelUp');
+                // 戰鬥結束回探索
+                if (game.inTown) AudioSystem.setScene('town');
+                else AudioSystem.setScene('explore');
+            }
+        }, 500);
+
+        // 存檔
+        const _save = game.saveGame?.bind(game);
+        if (_save) {
+            game.saveGame = function(...args) {
+                AudioSystem.play('save');
+                _save(...args);
+            };
+        }
+
+        // 物品使用/裝備
+        const _use = game.use?.bind(game);
+        if (_use) {
+            game.use = function(name, ...args) {
+                const it = SHOP_ITEMS[name];
+                if (it?.type === 'weapon' || it?.type === 'armor') AudioSystem.play('equip');
+                else AudioSystem.play('buy');
+                _use(name, ...args);
+            };
+        }
+
+        // 商店升級
+        const _upgrade = game.upgrade?.bind(game);
+        if (_upgrade) {
+            game.upgrade = function(...args) {
+                AudioSystem.play('buy');
+                _upgrade(...args);
+            };
+        }
+
+        // 戰鬥結果偵測（監聽 battle-modal 關閉）
+        const battleModal = document.getElementById('battle-modal');
+        if (battleModal) {
+            let _prevActive = false;
+            new MutationObserver(() => {
+                const nowActive = battleModal.classList.contains('active');
+                if (_prevActive && !nowActive) {
+                    // 離開戰鬥，判斷勝負
+                    const log = document.getElementById('battle-log');
+                    const last = log?.lastElementChild?.textContent || '';
+                    if (last.includes('勝利') || last.includes('倒下') || last.includes('擊敗')) {
+                        AudioSystem.play('win');
+                    }
+                    setTimeout(() => {
+                        if (game.inTown) AudioSystem.setScene('town');
+                        else AudioSystem.setScene('explore');
+                    }, 800);
+                }
+                _prevActive = nowActive;
+            }).observe(battleModal, { attributes: true, attributeFilter: ['class'] });
+        }
+
+        // 交易視窗
+        const interactModal = document.getElementById('interact-modal');
+        if (interactModal) {
+            new MutationObserver(() => {
+                if (interactModal.classList.contains('active')) {
+                    AudioSystem.setScene('trade');
+                    AudioSystem.play('tradeOpen');
+                }
+            }).observe(interactModal, { attributes: true, attributeFilter: ['class'] });
+        }
+
+    }, 600);
+});
+</script>
+</body>
+</html>
